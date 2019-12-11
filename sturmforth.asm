@@ -60,14 +60,6 @@ init:	tsx
 	jsr	interpret
 	rts
 
-; interpret
-; - word
-; - find
-; -- if found
-; --- execute word
-; -- else convert to number
-; --- push to stack
-
 ; Format of word definition:
 ;
 ; pointer to previous word (2 bytes)
@@ -756,6 +748,8 @@ not:	jmp	zeroequal
 ; *** INTERPRETER ***
 ;
 
+
+
 ; number ( addr --- n )
 ; addr = address to string
 ; n = number
@@ -785,9 +779,12 @@ number:	ldy	#0
 	jsr	mul
 	; + digit
 	lda	buffer+1,y
+	cmp	#'0'
+	bcc	@error1
+	cmp	#':'
+	bcs	@error1
 	sec	
 	sbc	#'0'
-	; todo: abort
 	sta	DSTACK,x
 	inx
 	lda	#0
@@ -814,6 +811,16 @@ number:	ldy	#0
 	jsr	negate
 @number2:
 	NEXT
+@error1:
+	pla
+	dex	; discard *10
+	dex
+	dex	; discard address
+	dex
+	jsr	primm
+	.byte	"undefined word", eol, 0
+	; todo: abort
+	NEXT
 
 ; query
 ; read input and fill input buffer
@@ -826,7 +833,7 @@ query:
 	jsr	chrin
 	sta	buffer+1,x
 	inx
-	cpx	#$41
+	cpx	#$41		; check max length
 	beq	@error1
 	cmp	#eol
 	bne	@query1
@@ -852,10 +859,13 @@ word:
 	sta	TMP1
 	stx	XSAVE
 	ldy	#0
+	;ldx	#0
+	;sty	CPTR
 @word1:				; ignore leading delimiters
 	ldx	CPTR
 	inc	CPTR
 	lda	buffer+1,x
+	;inx
 @delim1:
 	cmp	TMP1		; branch if delimiter
 	beq	@word1
@@ -968,13 +978,21 @@ execute:
 @execute1:
 	NEXT
 
+; interpret
+; - word
+; - find
+; -- if found
+; --- execute word
+; -- else convert to number
+; --- push to stack
+
 	defcode "interpret", 0
 interpret:
 	lda	#eol
 	jsr	chrout
 	jsr	query
 @interpret1:
-	lda	#$20
+	lda	#$20		; space is delimiter
 	sta	DSTACK,x
 	inx
 	lda	#$00
@@ -1002,7 +1020,11 @@ interpret:
 	jsr	trace
 	jmp	@interpret1
 @interpret3:
-	NEXT
+	dex
+	dex
+	jsr	trace
+	jmp	interpret
+	;NEXT
 
 ; cold
 ; cold start
