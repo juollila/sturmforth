@@ -57,6 +57,11 @@ init:	tsx
 	;jsr	trace
 	;ldx	SPSAVE
 	;txs
+	;jsr	trace
+	;jsr	lit
+	;.word	2019
+	;jsr	trace
+	;rts
 	jsr	interpret
 	rts
 
@@ -331,7 +336,7 @@ zero:	lda	#0
 	inx
 	NEXT
 
-; 0 ( --- 1 )
+; 1 ( --- 1 )
 ; push one to the stack.
 	defcode "1", 0
 one:	ldy	#1
@@ -342,7 +347,7 @@ one:	ldy	#1
 	inx
 	NEXT
 
-; 0 ( --- 2 )
+; 2 ( --- 2 )
 ; push two to the stack.
 	defcode "2", 0
 two:	lda	#2
@@ -354,6 +359,55 @@ two:	lda	#2
 	NEXT
 
 ;
+; *** LITERAL ***
+;
+
+; lit ( --- n ) 
+; pushes literal to the stack
+	defcode "lit", 0
+lit:	txa			; save data stack ptr
+	tay
+	tsx			; modify return address
+	clc
+	lda	$101,x
+	sta	TMP1
+	adc	#2
+	sta	$101,x
+	lda	$102,x
+	sta	TMP2
+	adc	#0
+	sta	$102,x
+	tya			; restore data stack ptr
+	tax
+	ldy	#1		; push literal to the stack
+	lda	(TMP1),y
+	sta	DSTACK,x
+	iny
+	inx
+	lda	(TMP1),y
+	sta	DSTACK,x
+	inx
+	NEXT
+
+;
+; *** BUILT IN VARIABLES ***
+;
+
+.macro	variable name, location
+	defcode name, 0
+	lda	#<location
+	sta	DSTACK,x
+	inx
+	lda	#>location
+	sta	DSTACK,x
+	inx
+	NEXT
+.endmacro
+
+	variable "state", STSAVE
+	variable "here", HEREPTR
+	variable "last", LASTPTR
+
 ; *** MEMORY (PEEK & POKE) ***
 ;
 
@@ -425,6 +479,17 @@ cfetch:
 	sta	DSTACK-1,x
 	NEXT
 
+; +! ( n addr --- )
+; n is added to the value at addr
+	defcode "+!", 0
+pluststore:
+	jsr	swap	; ( addr n )
+	jsr	over	; ( addr n addr )
+	jsr	fetch	; ( addr n v )
+	jsr	plus	; ( addr n+v )
+	jsr	swap	; ( n+v addr )
+	jsr	store	; ( )
+	NEXT
 ;
 ; *** ARITHMETIC ***
 ;
