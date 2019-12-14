@@ -407,7 +407,45 @@ lit:	txa			; save data stack ptr
 	variable "state", STSAVE
 	variable "here", HEREPTR
 	variable "last", LASTPTR
+	variable "base", BASE
 
+; hex ( --- )
+; changes base to hex
+	defcode "hex", 0
+hexbase:
+	lda	#16
+	sta	BASE
+	NEXT
+
+; dec ( --- )
+; changes base to decimal
+	defcode	"dec", 0
+decbase:
+	lda	#10
+	sta	BASE
+	NEXT
+
+;
+; *** INPUT/OUTPUT ***
+;
+
+; . ( n --- )
+; print value of n
+	defcode ".", 0
+dot:
+	lda	DSTACK-2,x
+	ldy	DSTACK-1,x
+	dex
+	dex
+	pha
+	lda	#10
+	cmp	BASE
+	bne	@dot1
+	pla
+	jmp	printdec
+@dot1:	pla
+	jmp	printword
+	
 ; *** MEMORY (PEEK & POKE) ***
 ;
 
@@ -1193,6 +1231,7 @@ quit:	ldx	SPSAVE	; initialize return stack
 	jsr	primm
 	.byte	"ok",eol,0
 	jmp	@quit1
+	jmp	:-	; makes assembler happy
 	
 ;          Nucleus layer
 ;
@@ -1419,7 +1458,7 @@ printword:
 ; prints 16-bit word in decimal (string)
 ;
 ; input	a = low byte
-;	y = high bye
+;	y = high byte
 ; does not change registers
 printdec:
 	pha

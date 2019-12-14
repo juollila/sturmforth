@@ -23,6 +23,7 @@
 	HEREPTR	= $2f6 ; data space pointer
 	LASTPTR = $2f8 ; last dictionary entry
 	CPTR	= $2fa ; character position in buffer
+	BASE	= $2fc ; numeric base
 
 ; kernal functions
 	readst	= $ffb7
