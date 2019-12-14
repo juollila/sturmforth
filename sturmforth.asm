@@ -1,7 +1,6 @@
 ; SturmForth (subroutine threaded code) interpreter
 ; Coded by Juha Ollila
 ;
-; Mar 6-19 2019 Initial version.
 
 	.setcpu		"6502"
 	.include	"define.asm"
@@ -919,6 +918,98 @@ zerogreater:
 	defcode "not", 0
 not:	jmp	zeroequal
 
+;
+; *** COMPILER ***
+;
+	defcode "create", 0
+create:	lda	#space		; get name of new dict entry
+	sta	DSTACK,x
+	lda	#0
+	sta	DSTACK+1,x
+	inx
+	inx
+	jsr	word
+	lda	DSTACK-2,x	; string address
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	dex			; delete addr of string from stack
+	dex
+	ldy	#0		; copy string length
+	lda	(TMP1),y
+	sta	AUX
+	inc	AUX		; length = length + length byte
+	lda	HEREPTR		; destination address
+	sta	TMP3
+	lda	HEREPTR+1
+	sta	TMP4
+	lda	LASTPTR		; create a link to the previous word
+	sta	(TMP3),y
+	lda	LASTPTR+1
+	iny
+	sta	(TMP3),y
+	lda	HEREPTR		; update LASTPTR
+	sta	LASTPTR
+	lda	HEREPTR+1
+	sta	LASTPTR+1
+	clc			; update desination address
+	lda	TMP3		; dst = old last ptr + 2
+	adc	#2
+	sta	TMP3
+	lda	TMP4
+	adc	#0
+	sta	TMP4
+	ldy	#0
+@create1:
+	lda	(TMP1),y	; copy length of name and name
+	sta	(TMP3),y
+	iny
+	cpy	AUX
+	bne	@create1
+	clc			; update destination address
+	lda	TMP3		; dst addr = old last ptr + 2 + length + length byte
+	adc	AUX
+	sta	TMP3
+	lda	TMP4
+	adc	#0
+	sta	TMP4
+	clc			; update HERE
+	lda	TMP3		; HERE = dst addr + code length
+	adc	#@code2-@code1
+	sta	HEREPTR
+	lda	TMP4
+	adc	#0
+	sta	HEREPTR+1
+	lda	HEREPTR		; update self modifying code
+	sta	@code1+1
+	lda	HEREPTR+1
+	sta	@code1b+1
+	lda	#<@code1
+	sta	TMP1
+	lda	#>@code1
+	sta	TMP2
+	lda	#@code2-@code1
+	sta	AUX
+	ldy	#0
+@create2:			; copy code
+	lda	(TMP1),y
+	sta	(TMP3),y
+	iny
+	cpy	AUX
+	bne	@create2
+	NEXT
+; code which is copied to new word
+; when new word is executed it places data fields address to the stack.
+@code1:	lda	#0
+	sta	DSTACK,x
+@code1b:
+	lda	#0
+	sta	DSTACK+1,x
+	inx
+	inx
+	NEXT
+@code2:
+	
 ;
 ; *** INTERPRETER ***
 ;

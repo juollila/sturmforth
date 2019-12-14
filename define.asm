@@ -3,6 +3,7 @@
 
 ; constants
 	eol	= $0d
+	space	= $20
 
 ; zero page
 
