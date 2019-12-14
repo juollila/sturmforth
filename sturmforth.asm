@@ -354,6 +354,78 @@ two:	lda	#2
 	NEXT
 
 ;
+; *** MEMORY (PEEK & POKE) ***
+;
+
+; ! ( n addr --- )
+; store int to the addr
+	defcode "!", 0
+store:	
+	lda     DSTACK-2,x      ; save address
+        sta     TMP1
+        lda     DSTACK-1,x
+        sta     TMP2
+	lda	DSTACK-4,x	; save the lsb
+	ldy	#0
+	sta	(TMP1),y
+	lda	DSTACK-3,x	; save the msb
+	iny
+	sta	(TMP1),y
+	dex
+	dex
+	dex
+	dex
+	NEXT
+
+; @ ( addr --- n )
+; fetches int from the addr
+	defcode "@", 0
+fetch:
+	lda     DSTACK-2,x      ; save address
+        sta     TMP1
+        lda     DSTACK-1,x
+        sta     TMP2
+	ldy	#0		; fetch the lsb
+	lda	(TMP1),y
+	sta	DSTACK-2,x
+	iny			; fetch the msb
+	lda	(TMP1),y
+	sta	DSTACK-1,x
+	NEXT
+
+; c! ( n addr --- )
+; store byte to the addr
+	defcode "c!", 0
+cstore:
+	lda     DSTACK-2,x      ; save address
+        sta     TMP1
+        lda     DSTACK-1,x
+        sta     TMP2
+	lda	DSTACK-4,x	; save only the lsb
+	ldy	#0
+	sta	(TMP1),y
+	dex
+	dex
+	dex
+	dex
+	NEXT
+
+; c@ ( addr --- n )
+; fetches byte from the addr
+	defcode "c@", 0
+cfetch:	
+	lda     DSTACK-2,x      ; save address
+        sta     TMP1
+        lda     DSTACK-1,x
+        sta     TMP2
+	ldy	#0		; fetch the lsb
+	lda	(TMP1),y
+	sta	DSTACK-2,x
+	tya			; msb is always 0
+	sta	DSTACK-1,x
+	NEXT
+
+;
 ; *** ARITHMETIC ***
 ;
 
