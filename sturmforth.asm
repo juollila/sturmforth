@@ -45,25 +45,6 @@ init:	tsx
 
 	; TODO: initialize interpreter
 	; TODO: run interpreter (QUIT)
-	;.word	:+
-	;jsr	trace
-
-	;lda	#$ff
-	;sta	DSTACK,x
-	;inx
-	;lda	#$00
-	;sta	DSTACK,x
-	;inx
-	;jsr	trace
-	;jsr	bitxor
-	;jsr	trace
-	;ldx	SPSAVE
-	;txs
-	;jsr	trace
-	;jsr	lit
-	;.word	2019
-	;jsr	trace
-	;rts
 	jsr	interpret
 	rts
 
@@ -112,34 +93,19 @@ name2:
 drop:
 	dex
 	dex
-	;cpx	#0
-	;bcc	@droperror
 	NEXT
-;@droperror:
-;	inc	$d020	; TODO stack underflow handling
-;	NEXT
 
 ; DUP ( n --- n n )
 ; duplicate the top entry on the stack.
 	defcode	"dup", 0
 dup:
-	;cpx	#0
-	;bcc	@duperror1
 	lda	DSTACK-2,x
 	sta	DSTACK,x
 	lda	DSTACK-1,x
 	sta	DSTACK+1,x
 	inx
 	inx
-	;cpx	#MAXSTACK+1
-	;bcs	@duperror2
 	NEXT
-;@duperror1:
-;	inc	$d020 ; TODO no item in stack
-;	NEXT
-;@duperror2:
-;	inc	$d020 ; TODO stack overflow
-;	NEXT
 
 ; OVER ( n1 n2 --- n1 n2 n1 )
 ; duplicate the second item on the stack.
@@ -954,13 +920,7 @@ not:	jmp	zeroequal
 ; hide the word in the dict
 ; hide ( addr --- )
 	defcode "hide", 0
-hide:	;jsr	twoplus		; ( addr+2 )
-	;jsr	dup		; ( addr+2 addr+2)
-	;jsr	fetch		; ( addr+2 flags)
-	;push	FLAG_H		; ( addr+2 flags flag_h)
-	;jsr	or		; ( addr+2 flags+h)
-	;jsr	swap		; ( flags+h addr+2)
-	;jsr	store
+hide:
 	lda	DSTACK-2,x
 	sta	TMP1
 	lda	DSTACK-1,x
@@ -994,8 +954,6 @@ unhide:	lda	DSTACK-2,x
 rightbr:
 	lda	#1
 	sta	STATE
-;	jsr	primm
-;	.byte	"state = 1",eol,0
 	NEXT
 
 ; set compilation state off
@@ -1004,8 +962,6 @@ rightbr:
 leftbr:
 	lda	#0
 	sta	STATE
-;	jsr	primm
-;	.byte	"state = 0",eol,0
 	NEXT
 
 ; create a new word
@@ -1063,49 +1019,6 @@ create:	lda	#space		; get name of new dict entry
 	adc	#0
 	sta	HEREPTR+1
 	NEXT
-	;clc			; update destination address
-	;lda	TMP3		; dst addr = old last ptr + 2 + length + length byte
-	;adc	AUX
-	;sta	TMP3
-	;lda	TMP4
-	;adc	#0
-	;sta	TMP4
-	;clc			; update HERE
-	;lda	TMP3		; HERE = dst addr + code length
-	;adc	#@code2-@code1
-	;sta	HEREPTR
-	;lda	TMP4
-	;adc	#0
-	;sta	HEREPTR+1
-	;lda	HEREPTR		; update self modifying code
-	;sta	@code1+1
-	;lda	HEREPTR+1
-	;sta	@code1b+1
-	;lda	#<@code1
-	;sta	TMP1
-	;lda	#>@code1
-	;sta	TMP2
-	;lda	#@code2-@code1
-	;sta	AUX
-	;ldy	#0
-;@create2:			; copy code
-	;lda	(TMP1),y
-	;sta	(TMP3),y
-	;iny
-	;cpy	AUX
-	;bne	@create2
-	;NEXT
-; code which is copied to new word
-; when new word is executed it places data fields address to the stack.
-;@code1:	;lda	#0
-	;sta	DSTACK,x
-;@code1b:
-	;lda	#0
-	;sta	DSTACK+1,x
-	;inx
-	;inx
-	;NEXT
-;@code2:
 
 ; allocate n bytes from the dictionary
 ; allot ( n --- )
@@ -1429,55 +1342,32 @@ interpret:
 	ldy	#0
 	lda	(TMP1),y
 	beq	@interpret3
-	;jsr	trace
 	jsr	find
-	;jsr	trace
 	lda	DSTACK-2,x
 	ora	DSTACK-1,x
 	bne	@interpret2
 	jsr	number
 	lda	STATE
 	beq	@interpret1	; branch if in interpreter mode
-;	push	$2018		; push clc (dummy) + jsr into stack
-;	jsr	comma		; save jsr to dictionary
-;	push	literal		; save address of literal to dictionary
-;	jsr	comma
-;	jsr	comma		; save number to dictionary
 	jsr	literal
-	;jsr	primm
-	;.byte	"number compiled",eol,0
 	jmp	@interpret1
-;@interpret3:
-;	jmp	@interpret4
 @interpret2:
 	lda	IMM
-	;jsr	printbyte
-	;lda	IMM
 	bne	@execute	; branch if immediate mode of word
 	lda	STATE
 	beq	@execute	; branch if in interpreter mode
 	push	$20		; store jsr
 	jsr	ccomma
-;	jsr	literal
-;	.byte	$18		; clc (dummy operation)
-;	.byte	$20		; jsr
-;	jsr	comma		; save rts to dictionary
 	jsr	comma		; save address to dictionary
-	;jsr	primm
-	;.byte	"word compiled", eol, 0
 	jmp	@interpret1
 @execute:
 	jsr	execute
-	;jsr	primm
-	;.byte	"word executed", eol, 0
-	;jsr	trace
 	jmp	@interpret1
 @interpret3:
 	dex
 	dex
 	jsr	trace
 	jmp	interpret
-	;NEXT
 
 ; cold
 ; cold start
