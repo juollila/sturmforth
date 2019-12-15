@@ -4,6 +4,7 @@
 ; constants
 	eol	= $0d
 	space	= $20
+	lowcase = $0e
 
 ; zero page
 

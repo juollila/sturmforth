@@ -26,27 +26,8 @@ basic:
 @nextbasicline:
 	.word	0
 
-init:	tsx
-	stx	SPSAVE
-	ldx	#0	; initialize DATASTACK ptr
-	stx	SPSAVE+1
-	stx	BASE
-	stx	IMM
-	stx	STATE
+init:	jmp	cold
 
-	lda	#<lastword
-	sta	LASTPTR
-	lda	#>lastword
-	sta	LASTPTR+1
-	lda	#<dictstart
-	sta	HEREPTR
-	lda	#>dictstart
-	sta	HEREPTR+1
-
-	; TODO: initialize interpreter
-	; TODO: run interpreter (QUIT)
-	jsr	interpret
-	rts
 
 ; Format of word definition:
 ;
@@ -436,9 +417,11 @@ dot:
 	cmp	BASE
 	bne	@dot1
 	pla
-	jmp	printdec
+	jsr	printdec
+	jmp	printspc
 @dot1:	pla
-	jmp	printword
+	jsr	printword
+	jmp	printspc
 	
 ; *** MEMORY (PEEK & POKE) ***
 ;
@@ -1324,8 +1307,8 @@ execute:
 
 	defcode "interpret", 0
 interpret:
-	lda	#eol
-	jsr	chrout
+	jsr	primm
+	.byte	"ok ",eol,0
 	jsr	query
 @interpret1:
 	lda	#$20		; space is delimiter
@@ -1372,34 +1355,45 @@ interpret:
 ; cold
 ; cold start
 	defcode "cold", 0
-cold:	lda	#<lastword
+cold:	tsx
+	stx	SPSAVE		; save original stack pointer
+				; (i.e. sp can be restored when bye command is supported.
+	lda	#<lastword	; initialize last word pointer	
 	sta	LASTPTR
 	lda	#>lastword
 	sta	LASTPTR+1
-	lda	#<dictstart
-	sta	HEREPTR
+	lda	#<dictstart	; initialize dict start (free area pointer)
+	sta	HEREPTR	
 	lda	#>dictstart
 	sta	HEREPTR+1
-	jmp	quit
+	lda	#10		; set base to decimal
+	sta	BASE
+	jsr	primm
+	.byte	eol,lowcase,"SturmFORTH - Coded by Juha Ollila 2019",eol,eol,0
+	jmp	abort
 
 ; abort
 	defcode "abort", 0
-abort:	jmp	quit
+abort:	
+	ldx	#0		; initialize data stack ptr
+	jmp	quit
 
 ; quit
 ; initializes Forth interpreter
 lastword:
 	defcode "quit", 0
-quit:	ldx	SPSAVE	; initialize return stack
+quit:	txa		; quit does not tamper data stack ptr
+	tay
+	ldx	SPSAVE	; initialize return stack
 	txs
-	ldx	#0	; initialize data stack
-	stx	STATE  ; stop compilation mode
-@quit1:	jsr	interpret
-	; check stack
-	jsr	primm
-	.byte	"ok",eol,0
-	jmp	@quit1
+	lda	#0	; initialize interpreter state and immediate mode flags
+	sta	STATE
+	sta	IMM
+	tya
+	tax
+	jmp	interpret
 	jmp	:-	; makes assembler happy
+
 	
 ;          Nucleus layer
 ;
@@ -1434,7 +1428,7 @@ quit:	ldx	SPSAVE	; initialize return stack
 trace:
 	stx	XSAVE
 	jsr	primm
-	.byte	$d, "stack(",0
+	.byte	eol, "stack(",0
 	txa
 	clc
 	ror
@@ -1455,19 +1449,18 @@ trace:
 	inx
 	jmp	@trace1
 @trace2:
+	jsr	printcr
 	ldx	XSAVE
 	rts
 
 
 printcr:
 	lda	#eol
-	jsr	chrout
-	rts
+	jmp	chrout
 
 printspc:
 	lda	#' '
-	jsr	chrout
-	rts
+	jmp	chrout
 
 ; primm routine
 ; copied from c128 kernal but modified so that it does not tamper
