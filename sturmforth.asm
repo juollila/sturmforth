@@ -84,6 +84,11 @@ name1:	.byte	name
 name2:
 .endmacro
 
+; word definition flags:
+	FLAG_I	= $40	; immediate
+	FLAG_H	= $80	; hidden
+	FLAG_M	= $1f	; length mask
+
 .macro	push	value
 	lda	#<value
 	sta	DSTACK,x
@@ -361,10 +366,11 @@ two:	lda	#2
 ; *** LITERAL ***
 ;
 
-; lit ( --- n ) 
+; literal ( --- n ) 
 ; pushes literal to the stack
 	defcode "lit", 0
-lit:	txa			; save data stack ptr
+literal:
+	txa			; save data stack ptr
 	tay
 	tsx			; modify return address
 	clc
@@ -392,8 +398,7 @@ lit:	txa			; save data stack ptr
 ; *** BUILT IN VARIABLES ***
 ;
 
-.macro	variable name, location
-	defcode name, 0
+.macro	variable location
 	lda	#<location
 	sta	DSTACK,x
 	inx
@@ -403,23 +408,34 @@ lit:	txa			; save data stack ptr
 	NEXT
 .endmacro
 
-	variable "state", STSAVE
-	variable "here", HEREPTR
-	variable "last", LASTPTR
-	variable "base", BASE
+	defcode "state", 0
+state:
+	variable STATE
+
+	defcode "here", 0
+here:
+	variable HEREPTR
+
+	defcode "last", 0
+last:
+	variable LASTPTR
+
+	defcode "base", 0
+base:
+	variable BASE
 
 ; hex ( --- )
 ; changes base to hex
 	defcode "hex", 0
-hexbase:
+hex:
 	lda	#16
 	sta	BASE
 	NEXT
 
 ; dec ( --- )
 ; changes base to decimal
-	defcode	"dec", 0
-decbase:
+	defcode	"decimal", 0
+decimal:
 	lda	#10
 	sta	BASE
 	NEXT
@@ -519,7 +535,7 @@ cfetch:
 ; +! ( n addr --- )
 ; n is added to the value at addr
 	defcode "+!", 0
-pluststore:
+plusstore:
 	jsr	swap	; ( addr n )
 	jsr	over	; ( addr n addr )
 	jsr	fetch	; ( addr n v )
@@ -921,6 +937,66 @@ not:	jmp	zeroequal
 ;
 ; *** COMPILER ***
 ;
+
+; hide the word in the dict
+; hide ( addr --- )
+	defcode "hide", 0
+hide:	;jsr	twoplus		; ( addr+2 )
+	;jsr	dup		; ( addr+2 addr+2)
+	;jsr	fetch		; ( addr+2 flags)
+	;push	FLAG_H		; ( addr+2 flags flag_h)
+	;jsr	or		; ( addr+2 flags+h)
+	;jsr	swap		; ( flags+h addr+2)
+	;jsr	store
+	lda	DSTACK-2,x
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	ldy	#2
+	lda	(TMP1),y
+	ora	#FLAG_H
+	sta	(TMP1),y
+	dex
+	dex
+	NEXT
+
+; unhide the word in the dict
+; unhide ( addr --- )
+	defcode "unhide", 0
+unhide:	lda	DSTACK-2,x
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	ldy	#2
+	lda	#FLAG_H ^ $ff
+	and	(TMP1),y
+	sta	(TMP1),y
+	dex
+	dex
+	NEXT
+
+; set compilation state on
+; ] ( --- )
+	defcode "]", 0
+rightbr:
+	lda	#1
+	sta	STATE
+;	jsr	primm
+;	.byte	"state = 1",eol,0
+	NEXT
+
+; set compilation state off
+; [ ( --- )
+	defcode "[", FLAG_I
+leftbr:
+	lda	#0
+	sta	STATE
+;	jsr	primm
+;	.byte	"state = 0",eol,0
+	NEXT
+
+; create a new word
+; expects a name in input stream
 	defcode "create", 0
 create:	lda	#space		; get name of new dict entry
 	sta	DSTACK,x
@@ -966,50 +1042,101 @@ create:	lda	#space		; get name of new dict entry
 	iny
 	cpy	AUX
 	bne	@create1
-	clc			; update destination address
-	lda	TMP3		; dst addr = old last ptr + 2 + length + length byte
-	adc	AUX
-	sta	TMP3
-	lda	TMP4
-	adc	#0
-	sta	TMP4
 	clc			; update HERE
-	lda	TMP3		; HERE = dst addr + code length
-	adc	#@code2-@code1
+	lda	TMP3		; HERE = old last ptr + 2 + length + length byte
+	adc	AUX
 	sta	HEREPTR
 	lda	TMP4
 	adc	#0
 	sta	HEREPTR+1
-	lda	HEREPTR		; update self modifying code
-	sta	@code1+1
-	lda	HEREPTR+1
-	sta	@code1b+1
-	lda	#<@code1
-	sta	TMP1
-	lda	#>@code1
-	sta	TMP2
-	lda	#@code2-@code1
-	sta	AUX
-	ldy	#0
-@create2:			; copy code
-	lda	(TMP1),y
-	sta	(TMP3),y
-	iny
-	cpy	AUX
-	bne	@create2
 	NEXT
+	;clc			; update destination address
+	;lda	TMP3		; dst addr = old last ptr + 2 + length + length byte
+	;adc	AUX
+	;sta	TMP3
+	;lda	TMP4
+	;adc	#0
+	;sta	TMP4
+	;clc			; update HERE
+	;lda	TMP3		; HERE = dst addr + code length
+	;adc	#@code2-@code1
+	;sta	HEREPTR
+	;lda	TMP4
+	;adc	#0
+	;sta	HEREPTR+1
+	;lda	HEREPTR		; update self modifying code
+	;sta	@code1+1
+	;lda	HEREPTR+1
+	;sta	@code1b+1
+	;lda	#<@code1
+	;sta	TMP1
+	;lda	#>@code1
+	;sta	TMP2
+	;lda	#@code2-@code1
+	;sta	AUX
+	;ldy	#0
+;@create2:			; copy code
+	;lda	(TMP1),y
+	;sta	(TMP3),y
+	;iny
+	;cpy	AUX
+	;bne	@create2
+	;NEXT
 ; code which is copied to new word
 ; when new word is executed it places data fields address to the stack.
-@code1:	lda	#0
-	sta	DSTACK,x
-@code1b:
-	lda	#0
-	sta	DSTACK+1,x
-	inx
-	inx
+;@code1:	;lda	#0
+	;sta	DSTACK,x
+;@code1b:
+	;lda	#0
+	;sta	DSTACK+1,x
+	;inx
+	;inx
+	;NEXT
+;@code2:
+
+; allocate n bytes from the dictionary
+; allot ( n --- )
+	defcode "allot", 0
+allot:	jsr	here
+	;jsr	fetch		
+	jsr	plusstore
 	NEXT
-@code2:
-	
+
+; stores n to the dictionary
+; , ( n --- )
+	defcode ",", 0
+comma:	jsr	here
+	jsr	fetch
+	jsr	store
+	jsr	two
+	jsr	allot
+	NEXT
+
+; define a new word
+; expects a name 
+; : ( --- )
+	defcode ":", 0
+colon:
+	jsr	create		; create word (dict entry)
+	jsr	last		; hide the created word
+	jsr	fetch
+	jsr	hide
+	jsr	rightbr		; enter into the compilation mode
+	NEXT			; EXIT
+
+; stop defining a new word
+; ; ( --- )
+	defcode ";", FLAG_I
+semicolon:
+	jsr	literal
+	rts
+	.byte	0
+	jsr	comma
+	jsr	last
+	jsr	fetch
+	jsr	unhide
+	jsr	leftbr
+	NEXT			; EXIT	
 ;
 ; *** INTERPRETER ***
 ;
@@ -1183,7 +1310,12 @@ find:	lda	DSTACK-2,x	; save string address
 @find1:	; compare length of word
 	ldy	#2
 	lda	(TMP3),y
-	and	#$0f
+	bmi	@find4		; branch if hidden (FLAG_H) is set
+	pha			; save immediate mode
+	and	#FLAG_I
+	sta	IMM
+	pla
+	and	#$0f		; length
 	sta	AUX
 	sta	AUX+1
 	ldy	#0
@@ -1279,11 +1411,38 @@ interpret:
 	ora	DSTACK-1,x
 	bne	@interpret2
 	jsr	number
-	jsr	trace
+	lda	STATE
+	beq	@interpret1	; branch if in interpreter mode
+	push	$2018		; push clc (dummy) + jsr into stack
+	jsr	comma		; save jsr to dictionary
+	push	literal		; save address of literal to dictionary
+	jsr	comma
+	jsr	comma		; save number to dictionary
+	;jsr	primm
+	;.byte	"number compiled",eol,0
 	jmp	@interpret1
+;@interpret3:
+;	jmp	@interpret4
 @interpret2:
+	lda	IMM
+	;jsr	printbyte
+	;lda	IMM
+	bne	@execute	; branch if immediate mode of word
+	lda	STATE
+	beq	@execute	; branch if in interpreter mode
+	jsr	literal
+	.byte	$18		; clc (dummy operation)
+	.byte	$20		; jsr
+	jsr	comma		; save rts to dictionary
+	jsr	comma		; save address to dictionary
+	;jsr	primm
+	;.byte	"word compiled", eol, 0
+	jmp	@interpret1
+@execute:
 	jsr	execute
-	jsr	trace
+	;jsr	primm
+	;.byte	"word executed", eol, 0
+	;jsr	trace
 	jmp	@interpret1
 @interpret3:
 	dex
@@ -1316,7 +1475,7 @@ lastword:
 quit:	ldx	SPSAVE	; initialize return stack
 	txs
 	ldx	#0	; initialize data stack
-	stx	STSAVE  ; stop compilation mode
+	stx	STATE  ; stop compilation mode
 @quit1:	jsr	interpret
 	; check stack
 	jsr	primm

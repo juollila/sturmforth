@@ -20,11 +20,12 @@
 	buffer	= $200 ; text buffer
 	AUX	= $2f0 ; temporary register (2 bytes)
 	SPSAVE	= $2f2 ; for debugging purposes (exit to basic)
-	STSAVE	= $2f4 ; compilation state
+	STATE	= $2f4 ; compilation state
 	HEREPTR	= $2f6 ; data space pointer
 	LASTPTR = $2f8 ; last dictionary entry
 	CPTR	= $2fa ; character position in buffer
 	BASE	= $2fc ; numeric base
+	IMM	= $2fe ; immediate mode (used by find and interpreter)
 
 ; kernal functions
 	readst	= $ffb7
