@@ -30,6 +30,9 @@ init:	tsx
 	stx	SPSAVE
 	ldx	#0	; initialize DATASTACK ptr
 	stx	SPSAVE+1
+	stx	BASE
+	stx	IMM
+	stx	STATE
 
 	lda	#<lastword
 	sta	LASTPTR
@@ -366,10 +369,20 @@ two:	lda	#2
 ; *** LITERAL ***
 ;
 
-; literal ( --- n ) 
+; literal ( --- n ) in runtime
+; literal ( n --- ) in compiling mode 
 ; pushes literal to the stack
 	defcode "lit", 0
 literal:
+	lda	STATE
+	beq	@literal1	; branch if not compiling
+	push	$20		; store "jsr"
+	jsr	ccomma
+	push	@literal1	; store address of literal1
+	jsr	comma
+	jsr	comma		; store number
+	NEXT
+@literal1:
 	txa			; save data stack ptr
 	tay
 	tsx			; modify return address
@@ -1112,6 +1125,16 @@ comma:	jsr	here
 	jsr	allot
 	NEXT
 
+; store byte to the dictionary
+; c, ( n --- )
+	defcode "c,", 0
+ccomma:	jsr	here
+	jsr	fetch
+	jsr	cstore
+	jsr	one
+	jsr	allot
+	NEXT
+
 ; define a new word
 ; expects a name 
 ; : ( --- )
@@ -1128,10 +1151,12 @@ colon:
 ; ; ( --- )
 	defcode ";", FLAG_I
 semicolon:
-	jsr	literal
-	rts
-	.byte	0
-	jsr	comma
+	push	$60		; store rts
+	jsr	ccomma
+;	jsr	literal
+;	rts
+;	.byte	0
+;	jsr	comma
 	jsr	last
 	jsr	fetch
 	jsr	unhide
@@ -1413,11 +1438,12 @@ interpret:
 	jsr	number
 	lda	STATE
 	beq	@interpret1	; branch if in interpreter mode
-	push	$2018		; push clc (dummy) + jsr into stack
-	jsr	comma		; save jsr to dictionary
-	push	literal		; save address of literal to dictionary
-	jsr	comma
-	jsr	comma		; save number to dictionary
+;	push	$2018		; push clc (dummy) + jsr into stack
+;	jsr	comma		; save jsr to dictionary
+;	push	literal		; save address of literal to dictionary
+;	jsr	comma
+;	jsr	comma		; save number to dictionary
+	jsr	literal
 	;jsr	primm
 	;.byte	"number compiled",eol,0
 	jmp	@interpret1
@@ -1430,10 +1456,12 @@ interpret:
 	bne	@execute	; branch if immediate mode of word
 	lda	STATE
 	beq	@execute	; branch if in interpreter mode
-	jsr	literal
-	.byte	$18		; clc (dummy operation)
-	.byte	$20		; jsr
-	jsr	comma		; save rts to dictionary
+	push	$20		; store jsr
+	jsr	ccomma
+;	jsr	literal
+;	.byte	$18		; clc (dummy operation)
+;	.byte	$20		; jsr
+;	jsr	comma		; save rts to dictionary
 	jsr	comma		; save address to dictionary
 	;jsr	primm
 	;.byte	"word compiled", eol, 0
