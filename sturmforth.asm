@@ -423,7 +423,7 @@ dot:
 	jsr	printword
 	jmp	printspc
 	
-; *** MEMORY (PEEK & POKE) ***
+; *** MEMORY (peek, poke and copy) ***
 ;
 
 ; ! ( n addr --- )
@@ -505,6 +505,110 @@ plusstore:
 	jsr	swap	; ( n+v addr )
 	jsr	store	; ( )
 	NEXT
+
+; cmove (src dst n --- )
+; copy n bytes from source to destination (from low to high)
+
+	defcode "cmove", 0
+cmove:
+	jsr	initcmove
+@copy2:
+@copy2a:
+	lda	AUX
+	ora	AUX+1
+	beq	@exit
+	lda	(TMP1),y
+	sta	(TMP3),y
+	inc	TMP1
+	bne	@copy2b
+	inc	TMP2
+@copy2b:
+	inc	TMP3
+	bne	@copy2c
+	inc	TMP4
+@copy2c:
+	dec	AUX
+	lda	AUX
+	cmp	#$ff
+	bne	@copy2d
+	dec	AUX+1
+@copy2d:
+	sec
+	bcs	@copy2a
+@exit:	NEXT
+
+; <cmove (src dst n --- )
+; copy n bytes from source to destination (from high to low)
+	defcode "<cmove", 0
+revcmove:
+	jsr	initcmove
+@copy3:
+	clc
+	lda	TMP1
+	adc	AUX
+	sta	TMP1
+	lda	TMP2
+	adc	AUX+1
+	sta	TMP2
+	clc
+	lda	TMP3
+	adc	AUX
+	sta	TMP3
+	lda	TMP4
+	adc	AUX+1
+	sta	TMP4
+@copy3a:
+	lda	AUX
+	ora	AUX+1
+	beq	@exit
+
+	dec	TMP1
+	lda	TMP1
+	cmp	#$ff
+	bne	@copy3b
+	dec	TMP2
+@copy3b:
+	dec	TMP3
+	lda	TMP3
+	cmp	#$ff
+	bne	@copy3c
+	dec	TMP4
+@copy3c:
+	lda	(TMP1),y
+	sta	(TMP3),y
+	dec	AUX
+	lda	AUX
+	cmp	#$ff
+	bne	@copy3d
+	dec	AUX+1
+@copy3d:
+	sec
+	bcs	@copy3a
+@exit:
+	NEXT
+
+initcmove:			; routine used by cmove and <cmove
+	lda	DSTACK-6,x
+	sta	TMP1
+	lda	DSTACK-5,x
+	sta	TMP2
+	lda	DSTACK-4,x
+	sta	TMP3
+	lda	DSTACK-3,x
+	sta	TMP4
+	lda	DSTACK-2,x
+	sta	AUX
+	lda	DSTACK-1,x
+	sta	AUX+1
+	dex
+	dex
+	dex
+	dex
+	dex
+	dex
+	ldy	#0
+	rts
+
 ;
 ; *** ARITHMETIC ***
 ;
@@ -726,8 +830,8 @@ mod:	jsr	divmod
 	jmp	drop
 
 ; div ( n1 n2 --- n1/n2 )
-	defcode "div", 0
-div:	jsr	divmod
+	defcode "/", 0
+divide:	jsr	divmod
 	jsr	swap
 	jmp	drop
 
