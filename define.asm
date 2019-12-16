@@ -27,6 +27,7 @@
 	CPTR	= $2fa ; character position in buffer
 	BASE	= $2fc ; numeric base
 	IMM	= $2fe ; immediate mode (used by find and interpreter)
+	CREATE	= $2ff ; create1 vs create flag
 
 ; kernal functions
 	readst	= $ffb7

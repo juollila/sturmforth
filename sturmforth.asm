@@ -950,7 +950,15 @@ leftbr:
 ; create a new word
 ; expects a name in input stream
 	defcode "create", 0
-create:	lda	#space		; get name of new dict entry
+create:
+	lda	#$80		; set flag (during the runtime, ptr to data is stored to stack)
+	sta	CREATE
+	bmi	create2
+create1:			; entry point when called from column word
+	lda	#0		; set flag to 0 (during the runtime, no ptr is stored to stack)
+	sta	CREATE
+create2:
+	lda	#space		; get name of new dict entry
 	sta	DSTACK,x
 	lda	#0
 	sta	DSTACK+1,x
@@ -988,12 +996,12 @@ create:	lda	#space		; get name of new dict entry
 	adc	#0
 	sta	TMP4
 	ldy	#0
-@create1:
+@create3:
 	lda	(TMP1),y	; copy length of name and name
 	sta	(TMP3),y
 	iny
 	cpy	AUX
-	bne	@create1
+	bne	@create3
 	clc			; update HERE
 	lda	TMP3		; HERE = old last ptr + 2 + length + length byte
 	adc	AUX
@@ -1001,6 +1009,22 @@ create:	lda	#space		; get name of new dict entry
 	lda	TMP4
 	adc	#0
 	sta	HEREPTR+1
+	lda	CREATE		; check flag
+	bpl	@create4	; branch if no ptr saving needed during the runtime
+	lda	STATE		; save compile state
+	pha
+	lda	#1		; enforce compile state
+	sta	STATE
+	jsr	here		; address = HERE + 6:
+	jsr	fetch		; jsr literal = 3 bytes
+	push	6		; address = 2 bytes, rts = 1 byte
+	jsr	plus
+	jsr	literal		; save literal (address)
+	push	$60		; rts
+	jsr	ccomma
+	pla			; return to the original state
+	sta	STATE
+@create4:
 	NEXT
 
 ; allocate n bytes from the dictionary
@@ -1036,7 +1060,7 @@ ccomma:	jsr	here
 ; : ( --- )
 	defcode ":", 0
 colon:
-	jsr	create		; create word (dict entry)
+	jsr	create1		; create word (dict entry)
 	jsr	last		; hide the created word
 	jsr	fetch
 	jsr	hide
