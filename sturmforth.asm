@@ -609,6 +609,31 @@ initcmove:			; routine used by cmove and <cmove
 	ldy	#0
 	rts
 
+; constant ( n --- )
+; create a constant, e.g. 0 constant nil
+	defcode "constant", 0
+constant:
+	jsr	create1
+	lda	STATE		; enforce compile state
+	pha
+	lda	#1
+	sta	STATE
+	jsr	literal
+	pla
+	sta	STATE
+	push	$60		; rts
+	jsr	ccomma
+	NEXT
+
+; variable ( --- )
+; create a variable, e.g. variable var
+	defcode "variable", 0
+var:
+	jsr	create
+	jsr	two
+	jsr	allot
+	NEXT
+
 ;
 ; *** ARITHMETIC ***
 ;
