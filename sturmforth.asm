@@ -1,4 +1,4 @@
-; SturmForth (subroutine threaded code) interpreter
+; SturmForth - subroutine threaded code (STC) FORTH interpreter
 ; Coded by Juha Ollila
 ;
 
@@ -7,13 +7,15 @@
 	.feature	dollar_is_pc
 
 ; In Forth, NEXT routine jumps to the next word.
+; In STC interpreter it is a return from subroutine.
 .macro NEXT
 	rts
 .endmacro
 
 ; In Forth, DOCOL is the interpreter function for : definitions
-.macro DOCOL
-.endmacro
+; In STC interpreter it is no op.
+;.macro DOCOL
+;.endmacro
 
 basic:
 	; .org	$801-2
@@ -54,6 +56,7 @@ name2:
 	FLAG_H	= $80	; hidden
 	FLAG_M	= $1f	; length mask
 
+; push value to the data stack
 .macro	push	value
 	lda	#<value
 	sta	DSTACK,x
@@ -316,20 +319,21 @@ two:	lda	#2
 ; *** LITERAL ***
 ;
 
-; literal ( --- n ) in runtime
-; literal ( n --- ) in compiling mode 
-; pushes literal to the stack
-	defcode "lit", 0
+; literal ( n --- ) 
+; compile literal
+	defcode "literal", FLAG_I
 literal:
-	lda	STATE
-	beq	@literal1	; branch if not compiling
 	push	$20		; store "jsr"
 	jsr	ccomma
-	push	@literal1	; store address of literal1
+	push	lit		; store address of lit
 	jsr	comma
 	jsr	comma		; store number
 	NEXT
-@literal1:
+
+; lit ( --- n ) in runtime
+; pushes (compiled) n to the stack
+	defcode "lit", 0
+lit:
 	txa			; save data stack ptr
 	tay
 	tsx			; modify return address
@@ -614,13 +618,13 @@ initcmove:			; routine used by cmove and <cmove
 	defcode "constant", 0
 constant:
 	jsr	create1
-	lda	STATE		; enforce compile state
-	pha
-	lda	#1
-	sta	STATE
+;	lda	STATE		; enforce compile state
+;	pha
+;	lda	#1
+;	sta	STATE
 	jsr	literal
-	pla
-	sta	STATE
+;	pla
+;	sta	STATE
 	push	$60		; rts
 	jsr	ccomma
 	NEXT
@@ -1140,10 +1144,10 @@ create2:
 	sta	HEREPTR+1
 	lda	CREATE		; check flag
 	bpl	@create4	; branch if no ptr saving needed during the runtime
-	lda	STATE		; save compile state
-	pha
-	lda	#1		; enforce compile state
-	sta	STATE
+;	lda	STATE		; save compile state
+;	pha
+;	lda	#1		; enforce compile state
+;	sta	STATE
 	jsr	here		; address = HERE + 6:
 	jsr	fetch		; jsr literal = 3 bytes
 	push	6		; address = 2 bytes, rts = 1 byte
@@ -1151,8 +1155,8 @@ create2:
 	jsr	literal		; save literal (address)
 	push	$60		; rts
 	jsr	ccomma
-	pla			; return to the original state
-	sta	STATE
+;	pla			; return to the original state
+;	sta	STATE
 @create4:
 	NEXT
 
@@ -1485,7 +1489,7 @@ interpret:
 	jsr	number
 	lda	STATE
 	beq	@interpret1	; branch if in interpreter mode
-	jsr	literal
+	jsr	literal		; store literal (compiling)
 	jmp	@interpret1
 @interpret2:
 	lda	IMM
