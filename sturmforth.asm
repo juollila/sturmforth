@@ -214,8 +214,7 @@ tor:
 	; move return address in the return stack
 	tsx
 	lda	$101,x
-	.byte	$9d, $ff, $00
-;	sta	$00ff,x
+	.byte	$9d, $ff, $00 ;	sta $00ff,x
 	lda	$102,x
 	sta	$100,x
 	; copy top item to the return stack
@@ -470,6 +469,16 @@ spaces:
 	dex
 	dex
 	NEXT
+
+; emit ( n --- )
+; print a character (petscii code n)
+	defcode "emit", 0
+emit:
+	lda	DSTACK-2,x
+	jsr	chrout
+	dex
+	dex
+	NEXT
 		
 ; *** MEMORY (peek, poke and copy) ***
 ;
@@ -662,13 +671,7 @@ initcmove:			; routine used by cmove and <cmove
 	defcode "constant", 0
 constant:
 	jsr	create1
-;	lda	STATE		; enforce compile state
-;	pha
-;	lda	#1
-;	sta	STATE
 	jsr	literal
-;	pla
-;	sta	STATE
 	push	$60		; rts
 	jsr	ccomma
 	NEXT
@@ -1188,10 +1191,6 @@ create2:
 	sta	HEREPTR+1
 	lda	CREATE		; check flag
 	bpl	@create4	; branch if no ptr saving needed during the runtime
-;	lda	STATE		; save compile state
-;	pha
-;	lda	#1		; enforce compile state
-;	sta	STATE
 	jsr	here		; address = HERE + 6:
 	jsr	fetch		; jsr literal = 3 bytes
 	push	6		; address = 2 bytes, rts = 1 byte
@@ -1199,8 +1198,6 @@ create2:
 	jsr	literal		; save literal (address)
 	push	$60		; rts
 	jsr	ccomma
-;	pla			; return to the original state
-;	sta	STATE
 @create4:
 	NEXT
 
@@ -1208,7 +1205,6 @@ create2:
 ; allot ( n --- )
 	defcode "allot", 0
 allot:	jsr	here
-	;jsr	fetch		
 	jsr	plusstore
 	NEXT
 
@@ -1250,10 +1246,6 @@ colon:
 semicolon:
 	push	$60		; store rts
 	jsr	ccomma
-;	jsr	literal
-;	rts
-;	.byte	0
-;	jsr	comma
 	jsr	last
 	jsr	fetch
 	jsr	unhide
@@ -1374,13 +1366,10 @@ word:
 	sta	TMP1
 	stx	XSAVE
 	ldy	#0
-	;ldx	#0
-	;sty	CPTR
 @word1:				; ignore leading delimiters
 	ldx	CPTR
 	inc	CPTR
 	lda	buffer+1,x
-	;inx
 @delim1:
 	cmp	TMP1		; branch if delimiter
 	beq	@word1
@@ -1643,7 +1632,6 @@ trace:
 	lda	DSTACK+1,x
 	tay
 	lda	DSTACK,x
-	;jsr	printword
 	jsr	printdec
 	jsr	printspc
 	inx
@@ -1653,15 +1641,6 @@ trace:
 	jsr	printcr
 	ldx	XSAVE
 	rts
-
-
-;printcr:
-;	lda	#eol
-;	jmp	chrout
-;
-;printspc:
-;	lda	#' '
-;	jmp	chrout
 
 ; primm routine
 ; copied from c128 kernal but modified so that it does not tamper
