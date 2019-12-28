@@ -30,20 +30,20 @@
 	CREATE	= $2ff ; create1 vs create flag
 
 ; kernal functions
-	readst	= $ffb7
-	setlfs	= $ffba
-	setnam	= $ffbd
-	open	= $ffc0
-	close	= $ffc3
-	chkin	= $ffc6
-	chkout	= $ffc9
-	clrchn	= $ffcc
+;	readst	= $ffb7
+;	setlfs	= $ffba
+;	setnam	= $ffbd
+;	open	= $ffc0
+;	close	= $ffc3
+;	chkin	= $ffc6
+;	chkout	= $ffc9
+;	clrchn	= $ffcc
 	chrin	= $ffcf
-	chrout	= $ffd2 ; used by init and petscii
+	chrout	= $ffd2
 ;	load	= $ffd5
 ;	save	= $ffd8
 ;	stop	= $ffe1
-	getin	= $ffe4 ; used by main loop and modify
+	getin	= $ffe4
 ;	setmsg	= $ff90
-	plot	= $fff0
+;	plot	= $fff0
 

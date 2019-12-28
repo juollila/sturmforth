@@ -426,7 +426,51 @@ dot:
 @dot1:	pla
 	jsr	printword
 	jmp	printspc
-	
+
+; key ( --- n )
+; read a key from the keyboard
+	defcode "key", 0
+key:
+	stx	XSAVE
+	jsr	getin
+	ldx	XSAVE
+	cmp	#0
+	beq	key	; branch if no key was pressed
+	sta	DSTACK,x
+	inx
+	lda	#0
+	sta	DSTACK,x
+	inx
+	NEXT
+
+; cr ( --- )
+; print an end of line character
+	defcode "cr", 0
+printcr:
+	lda	#eol
+	jsr	chrout
+	NEXT
+
+; space ( --- )
+; print a space character
+	defcode "space", 0
+printspc:
+	lda	#space
+	jsr	chrout
+	NEXT
+
+; spaces ( n --- )
+; print n space characters
+	defcode "spaces", 0
+spaces:
+@spaces1:
+	jsr	printspc
+	dec	DSTACK-2,x
+	bne	@spaces1
+	dex
+	dex
+	NEXT
+		
 ; *** MEMORY (peek, poke and copy) ***
 ;
 
@@ -1611,13 +1655,13 @@ trace:
 	rts
 
 
-printcr:
-	lda	#eol
-	jmp	chrout
-
-printspc:
-	lda	#' '
-	jmp	chrout
+;printcr:
+;	lda	#eol
+;	jmp	chrout
+;
+;printspc:
+;	lda	#' '
+;	jmp	chrout
 
 ; primm routine
 ; copied from c128 kernal but modified so that it does not tamper
