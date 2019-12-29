@@ -318,7 +318,7 @@ two:	lda	#2
 ; *** LITERAL ***
 ;
 
-; literal ( n --- ) 
+; LITERAL ( n --- ) 
 ; compile literal
 	defcode "literal", FLAG_I
 literal:
@@ -329,7 +329,7 @@ literal:
 	jsr	comma		; store number
 	NEXT
 
-; lit ( --- n ) in runtime
+; LIT ( --- n ) in runtime
 ; pushes (compiled) n to the stack
 	defcode "lit", 0
 lit:
@@ -387,7 +387,7 @@ last:
 base:
 	variable BASE
 
-; hex ( --- )
+; HEX ( --- )
 ; changes base to hex
 	defcode "hex", 0
 hex:
@@ -395,7 +395,7 @@ hex:
 	sta	BASE
 	NEXT
 
-; dec ( --- )
+; DECIMAL ( --- )
 ; changes base to decimal
 	defcode	"decimal", 0
 decimal:
@@ -426,7 +426,7 @@ dot:
 	jsr	printword
 	jmp	printspc
 
-; key ( --- n )
+; KEY ( --- n )
 ; read a key from the keyboard
 	defcode "key", 0
 key:
@@ -442,7 +442,7 @@ key:
 	inx
 	NEXT
 
-; cr ( --- )
+; CR ( --- )
 ; print an end of line character
 	defcode "cr", 0
 printcr:
@@ -450,7 +450,7 @@ printcr:
 	jsr	chrout
 	NEXT
 
-; space ( --- )
+; SPACE ( --- )
 ; print a space character
 	defcode "space", 0
 printspc:
@@ -458,7 +458,7 @@ printspc:
 	jsr	chrout
 	NEXT
 
-; spaces ( n --- )
+; SPACES ( n --- )
 ; print n space characters
 	defcode "spaces", 0
 spaces:
@@ -470,7 +470,7 @@ spaces:
 	dex
 	NEXT
 
-; emit ( n --- )
+; EMIT ( n --- )
 ; print a character (petscii code n)
 	defcode "emit", 0
 emit:
@@ -519,7 +519,7 @@ fetch:
 	sta	DSTACK-1,x
 	NEXT
 
-; c! ( n addr --- )
+; C! ( n addr --- )
 ; store byte to the addr
 	defcode "c!", 0
 cstore:
@@ -536,7 +536,7 @@ cstore:
 	dex
 	NEXT
 
-; c@ ( addr --- n )
+; C@ ( addr --- n )
 ; fetches byte from the addr
 	defcode "c@", 0
 cfetch:	
@@ -563,7 +563,7 @@ plusstore:
 	jsr	store	; ( )
 	NEXT
 
-; cmove (src dst n --- )
+; CMOVE (src dst n --- )
 ; copy n bytes from source to destination (from low to high)
 
 	defcode "cmove", 0
@@ -594,7 +594,7 @@ cmove:
 	bcs	@copy2a
 @exit:	NEXT
 
-; <cmove (src dst n --- )
+; <CMOVE (src dst n --- )
 ; copy n bytes from source to destination (from high to low)
 	defcode "<cmove", 0
 revcmove:
@@ -666,7 +666,7 @@ initcmove:			; routine used by cmove and <cmove
 	ldy	#0
 	rts
 
-; constant ( n --- )
+; CONSTANT ( n --- )
 ; create a constant, e.g. 0 constant nil
 	defcode "constant", 0
 constant:
@@ -676,7 +676,7 @@ constant:
 	jsr	ccomma
 	NEXT
 
-; variable ( --- )
+; VARIABLE ( --- )
 ; create a variable, e.g. variable var
 	defcode "variable", 0
 var:
@@ -787,7 +787,7 @@ twodiv:
 	ror	DSTACK-2,x
 	NEXT
 
-; negate ( n --- -n )
+; NEGATE ( n --- -n )
 	defcode "negate", 0
 negate:	lda	#0
 	sec
@@ -848,7 +848,7 @@ mul:
 	dex
 	NEXT
 
-; /mod ( n1 n2 --- (n1 mod n2) n1/n2 )
+; /MOD ( n1 n2 --- (n1 mod n2) n1/n2 )
 ; divide.
 	defcode "/mod", 0
 divmod:	
@@ -900,18 +900,18 @@ divmod:
 @div4:
 	NEXT
 
-; mod ( n1 n2 --- (n1 mod n2) )
+; MOD ( n1 n2 --- (n1 mod n2) )
 	defcode "mod", 0
 mod:	jsr	divmod
 	jmp	drop
 
-; div ( n1 n2 --- n1/n2 )
+; / ( n1 n2 --- n1/n2 )
 	defcode "/", 0
 divide:	jsr	divmod
 	jsr	swap
 	jmp	drop
 
-; min ( n1 n2 --- min )
+; MIN ( n1 n2 --- min )
 ; leave lesser of two items.
 	defcode "min", 0
 min:	jsr	over
@@ -925,7 +925,7 @@ min:	jsr	over
 	jsr	swap
 	jmp	drop
 
-; max ( n1 n2 --- max )
+; MAX ( n1 n2 --- max )
 ; leave greater of two items.
 	defcode "max", 0
 max:	jsr	over
@@ -939,7 +939,7 @@ max:	jsr	over
 	jsr	swap
 	jmp	drop
 
-; abs ( n --- |n| )
+; ABS ( n --- |n| )
 ; absolute value.
 	defcode "abs", 0
 abs:	jsr	dup
@@ -950,7 +950,7 @@ abs:	jsr	dup
 	jmp	negate
 @abs1:	jmp	drop
 
-; and ( n1 n2 --- (n1 and n2) )
+; AND ( n1 n2 --- (n1 and n2) )
 ; bitwise logical and.
 	defcode "and", 0
 bitand:	lda	DSTACK-4,x
@@ -961,7 +961,7 @@ bitand:	lda	DSTACK-4,x
 	sta	DSTACK-3,x
 	jmp	drop
 
-; or ( n1 n2 --- (n1 or n2) )
+; OR ( n1 n2 --- (n1 or n2) )
 ; bitwise logical or.
 	defcode "or", 0
 bitor:	lda	DSTACK-4,x
@@ -972,7 +972,7 @@ bitor:	lda	DSTACK-4,x
 	sta	DSTACK-3,x
 	jmp	drop
 
-; xor ( n1 n2 --- (n1 xor n2) )
+; XOR ( n1 n2 --- (n1 xor n2) )
 ; bitwise logical xor.
 	defcode "xor", 0
 bitxor:	lda	DSTACK-4,x
@@ -1077,11 +1077,61 @@ zerogreater:
 not:	jmp	zeroequal
 
 ;
+; *** BRANCHES ***
+;
+
+; BRANCH ( --- )
+; branch always.
+; return address is removed from the return stack.
+	defcode "branch", 0
+branch:
+	txa			; save data stack ptr
+	tay
+	tsx			; get (return address)-1
+	lda	$101,x
+	sta	TMP1
+	lda	$102,x
+	sta	TMP2
+	inx			; remove return address form return stack.
+	inx
+	txs
+	tya			; restore data stack ptr
+	tax
+	ldy	#1		; get branch address
+	lda	(TMP1),y
+	sta	TMP3
+	iny
+	lda	(TMP1),y
+	sta	TMP4
+	jmp	(TMP3)		; perform branch
+
+; 0BRANCH ( n --- n )
+; branch if top item is zero
+	defcode "0branch", 0
+zbranch:
+	lda	DSTACK-2,x
+	ora	DSTACK-1,x
+	beq	branch		; perform branch if n = 0
+	txa			; save data stack ptr
+	tay
+	tsx			; return address = return address + 2
+	clc
+	lda	$101,x
+	adc	#2
+	sta	$101,x
+	lda	$102,x
+	adc	#0
+	sta	$102,x
+	tya			; restore data stack ptr
+	tax
+	NEXT
+		
+;
 ; *** COMPILER ***
 ;
 
+; HIDE ( addr --- )
 ; hide the word in the dict
-; hide ( addr --- )
 	defcode "hide", 0
 hide:
 	lda	DSTACK-2,x
@@ -1096,8 +1146,8 @@ hide:
 	dex
 	NEXT
 
+; UNHIDE ( addr --- )
 ; unhide the word in the dict
-; unhide ( addr --- )
 	defcode "unhide", 0
 unhide:	lda	DSTACK-2,x
 	sta	TMP1
@@ -1111,22 +1161,23 @@ unhide:	lda	DSTACK-2,x
 	dex
 	NEXT
 
-; set compilation state on
 ; ] ( --- )
+; set compilation state on
 	defcode "]", 0
 rightbr:
 	lda	#1
 	sta	STATE
 	NEXT
 
-; set compilation state off
 ; [ ( --- )
+; set compilation state off
 	defcode "[", FLAG_I
 leftbr:
 	lda	#0
 	sta	STATE
 	NEXT
 
+; CREATE ( --- )
 ; create a new word
 ; expects a name in input stream
 	defcode "create", 0
@@ -1201,15 +1252,15 @@ create2:
 @create4:
 	NEXT
 
+; ALLOT ( n --- )
 ; allocate n bytes from the dictionary
-; allot ( n --- )
 	defcode "allot", 0
 allot:	jsr	here
 	jsr	plusstore
 	NEXT
 
-; stores n to the dictionary
 ; , ( n --- )
+; stores n to the dictionary
 	defcode ",", 0
 comma:	jsr	here
 	jsr	fetch
@@ -1218,8 +1269,8 @@ comma:	jsr	here
 	jsr	allot
 	NEXT
 
+; C, ( n --- )
 ; store byte to the dictionary
-; c, ( n --- )
 	defcode "c,", 0
 ccomma:	jsr	here
 	jsr	fetch
@@ -1228,9 +1279,9 @@ ccomma:	jsr	here
 	jsr	allot
 	NEXT
 
+; : ( --- )
 ; define a new word
 ; expects a name 
-; : ( --- )
 	defcode ":", 0
 colon:
 	jsr	create1		; create word (dict entry)
@@ -1240,8 +1291,8 @@ colon:
 	jsr	rightbr		; enter into the compilation mode
 	NEXT			; EXIT
 
-; stop defining a new word
 ; ; ( --- )
+; stop defining a new word
 	defcode ";", FLAG_I
 semicolon:
 	push	$60		; store rts
@@ -1255,9 +1306,7 @@ semicolon:
 ; *** INTERPRETER ***
 ;
 
-
-
-; number ( addr --- n )
+; NUMBER ( addr --- n )
 ; addr = address to string
 ; n = number
 	defcode "number", 0
@@ -1329,7 +1378,7 @@ number:	ldy	#0
 	; todo: abort
 	NEXT
 
-; query
+; QUERY
 ; read input and fill input buffer
 	defcode "query", 0
 query:
@@ -1357,7 +1406,7 @@ query:
 	NEXT
 
 
-; word ( delimiter --- string )
+; WORD ( delimiter --- string )
 ; get the next word from the input stream
 ; string = address of length byte, following string
 	defcode "word", 0
@@ -1401,7 +1450,7 @@ word:
 	sta	DSTACK-1,x
 	NEXT
 
-; find ( string --- addr )
+; FIND ( string --- addr )
 ; find the word from the dictionary
 ; string = address of length byte, following string
 ; addr = execution address of string (0 if not found)
@@ -1471,7 +1520,7 @@ find:	lda	DSTACK-2,x	; save string address
 	sta	DSTACK-1,x
 	NEXT
 
-; execute ( addr --- )
+; EXECUTE ( addr --- )
 ; execute the word in addr
 	defcode "execute", 0
 execute:
@@ -1487,7 +1536,7 @@ execute:
 @execute1:
 	NEXT
 
-; interpret
+; INTERPRET
 ; - word
 ; - find
 ; -- if found
@@ -1542,7 +1591,7 @@ interpret:
 	jsr	trace
 	jmp	interpret
 
-; cold
+; COLD
 ; cold start
 	defcode "cold", 0
 cold:	tsx
@@ -1562,13 +1611,13 @@ cold:	tsx
 	.byte	eol,lowcase,"SturmFORTH - Coded by Juha Ollila 2019",eol,eol,0
 	jmp	abort
 
-; abort
+; ABORT
 	defcode "abort", 0
 abort:	
 	ldx	#0		; initialize data stack ptr
 	jmp	quit
 
-; quit
+; QUIT
 ; initializes Forth interpreter
 lastword:
 	defcode "quit", 0
