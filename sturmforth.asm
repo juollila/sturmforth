@@ -23,7 +23,7 @@ basic:
 
 	; 2019 SYS 2062
 	.word	@nextbasicline
-	.word	2019
+	.word	2020
 	.byte	$9e, " 2062", $00
 @nextbasicline:
 	.word	0
@@ -1424,10 +1424,20 @@ word:
 	beq	@word1
 	cmp	#eol		; branch if eol
 	beq	@error2
-	bne	@word3
-@word2:	ldx	CPTR
+	cmp	#'('		; check if comment
+	bne	@word3		; branch if not comment
+@comment1:
+	ldx	CPTR		; ignore comment
 	inc	CPTR
-	lda	buffer+1,x	; get next char
+	lda	buffer+1,x
+	cmp	#eol
+	beq	@error2		; branch if eol
+	cmp	#')'
+	bne	@comment1	; branch if not end of comment
+	beq	@word1		; ignore following delimiters
+@word2:	ldx	CPTR		; get next char
+	inc	CPTR
+	lda	buffer+1,x
 @word3:	sta	buffer+1,y
 	iny
 	cmp	#eol		; branch if eol
