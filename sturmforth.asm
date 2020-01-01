@@ -1105,12 +1105,16 @@ branch:
 	sta	TMP4
 	jmp	(TMP3)		; perform branch
 
-; 0BRANCH ( n --- n )
+; 0BRANCH ( n --- )
 ; branch if top item is zero
 	defcode "0branch", 0
 zbranch:
 	lda	DSTACK-2,x
 	ora	DSTACK-1,x
+	php
+	dex			; remove item from the data stack
+	dex
+	plp
 	beq	branch		; perform branch if n = 0
 	txa			; save data stack ptr
 	tay
@@ -1125,7 +1129,46 @@ zbranch:
 	tya			; restore data stack ptr
 	tax
 	NEXT
-		
+
+; IF ( n --- ) execute the following statement if n!=0
+; (during the execution time)
+; compile if statement
+	defcode "if", FLAG_I
+if:	push	$20		; jsr
+	jsr	ccomma
+	push	zbranch
+	jsr	comma
+	jsr	here		; save location of branch operand to stack
+	jsr	fetch
+	push	0		; store dummy address
+	jsr	comma
+	NEXT
+
+; THEN ( --- )
+; compile then statement
+	defcode "then", FLAG_I
+then:
+	jsr	here		; get current address
+	jsr	fetch
+	jsr	swap		; save it as a branch address
+	jsr	store
+	NEXT
+
+; ELSE ( --- )
+; compile else statement
+	defcode "else", FLAG_I
+else:
+	push	$20		; jsr
+	jsr	ccomma
+	push	branch		; branch over the else part
+	jsr	comma
+	jsr	here		; save location of branch (over the else) operand to stack
+	jsr	fetch
+	push	0		; store dummy address
+	jsr	comma
+	jsr	swap		; fill the if's branch operand
+	jmp	then	
+
 ;
 ; *** COMPILER ***
 ;
@@ -1616,14 +1659,17 @@ interpret:
 	jmp	@interpret1
 @interpret2:
 	lda	IMM
-	bne	@execute	; branch if immediate mode of word
+	bne	@execute1	; branch if immediate mode of word
 	lda	STATE
-	beq	@execute	; branch if in interpreter mode
+	beq	@execute2	; branch if in interpreter mode
 	push	$20		; store jsr
 	jsr	ccomma
 	jsr	comma		; save address to dictionary
 	jmp	@interpret1
-@execute:
+@execute1:
+	lda	STATE		; check that not in the interpreter mode
+	beq	@error1
+@execute2:
 	jsr	execute
 	jmp	@interpret1
 @interpret3:
@@ -1631,6 +1677,10 @@ interpret:
 	dex
 	jsr	trace
 	jmp	interpret
+@error1:
+	jsr	primm
+	.byte	"compile only word",eol,0
+	jmp	abort
 
 ; COLD
 ; cold start
