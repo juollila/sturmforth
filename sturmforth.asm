@@ -1434,7 +1434,7 @@ word:
 	beq	@error2		; branch if eol
 	cmp	#')'
 	bne	@comment1	; branch if not end of comment
-	beq	@word1		; ignore following delimiters
+	beq	@word1		; ignore delimiters which follow the comment
 @word2:	ldx	CPTR		; get next char
 	inc	CPTR
 	lda	buffer+1,x
@@ -1530,6 +1530,37 @@ find:	lda	DSTACK-2,x	; save string address
 	sta	DSTACK-1,x
 	NEXT
 
+; ' ( --- addr )
+; get the next word from the input stream
+; returns execution address of word in the data stack.
+;
+; Note: this word cannot be used in the interpreter loop,
+;       because of exception handling.
+	defcode "'", 0
+tick:	push	space		; delimiter
+	jsr	word		; get the next word
+	lda	DSTACK-2,x	; check if a word was found
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	ldy	#0
+	lda	(TMP1),y
+	beq	@error1		; branch if string length = 0
+	jsr	find
+	lda	DSTACK-2,x
+	ora	DSTACK-1,x
+	beq	@error2
+	NEXT
+@error1:
+	jsr	primm
+	.byte	"no word",eol,0
+	jmp	abort
+@error2:
+	jsr	primm
+	.byte	"undefined word",eol,0
+	jmp	abort
+
+
 ; EXECUTE ( addr --- )
 ; execute the word in addr
 	defcode "execute", 0
@@ -1618,7 +1649,8 @@ cold:	tsx
 	lda	#10		; set base to decimal
 	sta	BASE
 	jsr	primm
-	.byte	eol,lowcase,"SturmFORTH - Coded by Juha Ollila 2019",eol,eol,0
+	.byte	eol,lowcase,"    **** SturmFORTH ****",eol, eol
+        .byte               "    Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
 ; ABORT
