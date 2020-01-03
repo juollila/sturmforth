@@ -1169,6 +1169,91 @@ else:
 	jsr	swap		; fill the if's branch operand
 	jmp	then	
 
+; DO ( limit index --- )
+; compile do statement
+	defcode "do", FLAG_I
+; compile time
+do:
+	push    $20             ; store "jsr"
+        jsr     ccomma
+        push    @do1            ; store address of @do1
+        jsr     comma
+	jsr	here		; get branch address to data stack
+	jsr	fetch
+        NEXT
+; runtime
+@do1:
+	pla			; save return address
+	sta	TMP1
+	pla
+	sta	TMP2
+	lda	DSTACK-3,x	; move two items from data stack to return stack
+	pha
+	lda	DSTACK-4,x
+	pha
+	lda	DSTACK-1,x
+	pha
+	lda	DSTACK-2,x
+	pha
+	dex			; remove two items from data stack
+	dex
+	dex
+	dex
+	lda	TMP2		; restore return address
+	pha
+	lda	TMP1
+	pha
+	NEXT
+
+; LOOP ( --- )
+; compile loop statement
+	defcode "loop", FLAG_I
+loop:
+; compile time
+	push	$20		; store "jsr"
+	jsr	ccomma
+	push	@loop1		; store address of @loop1
+	jsr	comma
+	push	$20		; store "jsr"
+	jsr	ccomma
+	push	zbranch		; store address of branch
+	jsr	comma
+	jsr	comma		; store branch address
+	NEXT
+; runtime
+@loop1:
+	
+	stx	XSAVE
+	tsx
+	inc	$103,x
+	bne	@loop2
+	inc	$104,x
+@loop2:
+	clc
+	lda	$105,x
+	sbc	$103,x
+	lda	$106,x
+	sbc	$104,x
+	ldx	XSAVE
+	asl
+	bcs	@loop3
+	push	0
+	rts			; zbranch
+@loop3:	
+	pla			; save return address
+	sta	TMP1
+	pla
+	sta	TMP2
+	pla			; remove two items from the return stack
+	pla
+	pla
+	pla
+	lda	TMP2		; restore return address
+	pha
+	lda	TMP1
+	pha
+	push	1
+	rts			; zbranch will not branch
 ;
 ; *** COMPILER ***
 ;
