@@ -1260,9 +1260,9 @@ loop:
 	defcode "leave", FLAG_I
 leave:
 ; compile time
-	push	$20	; store jsr
+	push	$20		; store jsr
 	jsr	ccomma
-	push	@leave1	; store address of leave1
+	push	@leave1		; store address of leave1
 	jsr	comma
 	NEXT
 ; runtime
@@ -1274,6 +1274,31 @@ leave:
 	lda	$106,x
 	sta	$104,x
 	ldx	XSAVE
+	rts
+
+; I ( --- n )
+; compile i statement
+	defcode "i", FLAG_I
+i_statement:
+	push	$20		; store jsr
+	jsr	ccomma
+	push	@i1		; store address
+	jsr	comma
+	NEXT
+; runtime
+@i1:	stx	XSAVE
+	tsx
+	lda	$103,x		; get index
+	sta	TMP1
+	lda	$104,x
+	sta	TMP2
+	ldx	XSAVE
+	lda	TMP1		; save index to data stack
+	sta	DSTACK,x
+	lda	TMP2
+	sta	DSTACK+1,x
+	inx
+	inx
 	rts
 
 ;
