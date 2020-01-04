@@ -481,7 +481,7 @@ emit:
 	NEXT
 
 ; ." ( --- )
-; print a string (terminated with ")
+; compile print a string (terminated with ")
 :	.word	:--		; defcode ".\"", FLAG_I
 	.byte	2 + FLAG_I
 	.byte	'.', '"'
@@ -521,6 +521,40 @@ dotquote:
 	inc	CPTR		; HACK: ignore the following quote in the input stream
 	push	0		; compile zero terminator for the primm
 	jsr	ccomma	
+	NEXT
+@error:
+	jsr	primm
+	.byte	"no string",eol,0
+	jmp	abort
+
+; .( ( --- )
+; print a string which is terminated with )
+	defcode ".("
+dotparen:
+	push	')'
+	jsr	word
+	lda	DSTACK-2,x
+	sta	TMP3
+	lda	DSTACK-1,x
+	sta	TMP4
+	dex			; remove address of string from the data stack
+	dex
+	ldy	#0		; check whether a string was found
+	lda	(TMP3),y
+	beq	@error
+@dotquote1:
+	inc	TMP3
+	bne	@dotquote2
+	inc	TMP4
+@dotquote2:
+	ldy	#1		; ignore leading space
+	lda	(TMP3),y
+	cmp	#')'		; branch to end if quote char
+	beq	@dotquote3
+	jsr	chrout
+	jmp	@dotquote1
+@dotquote3:
+	inc	CPTR		; HACK: ignore the following char in the input stream
 	NEXT
 @error:
 	jsr	primm
