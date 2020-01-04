@@ -1332,7 +1332,7 @@ j_statement:
 ; compile begin statement
 	defcode "begin", FLAG_I
 begin:
-	jsr	here
+	jsr	here		; get current address to stack
 	jsr	fetch
 	NEXT
 
@@ -1347,6 +1347,38 @@ until:
 	jsr	comma		; store branch address
 	NEXT
 
+; WHILE ( n --- )
+; compile while statement
+	defcode "while", FLAG_I
+while:
+	push	$20		; jsr
+	jsr	ccomma
+	push	zbranch
+	jsr	comma
+	jsr	here		; get current address to stack
+	jsr	fetch
+	push	0		; compile dummy address
+	jsr	comma
+	NEXT
+
+; REPEAT ( --- )
+; compile repeat statement
+	defcode "repeat", FLAG_I
+repeat:
+	push	$20		;jsr
+	jsr	ccomma
+	push	branch
+	jsr	comma
+	jsr	swap		; get the original address (from begin)
+	jsr	comma		; compile it after the branch
+	jsr	here		; get the current address
+	jsr	fetch
+	jsr	swap		; stack: here, address of zbranch operand in while
+	jsr	store
+	NEXT
+	
+
+; compile repeat statement
 ;
 ; *** COMPILER ***
 ;
