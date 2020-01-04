@@ -1225,17 +1225,17 @@ loop:
 	
 	stx	XSAVE
 	tsx
-	inc	$103,x
+	inc	$103,x		; index = index + 1
 	bne	@loop2
 	inc	$104,x
 @loop2:
-	clc
+	clc			; limit - index
 	lda	$105,x
 	sbc	$103,x
 	lda	$106,x
 	sbc	$104,x
 	ldx	XSAVE
-	asl
+	asl			; check if <= 0
 	bcs	@loop3
 	push	0
 	rts			; zbranch
@@ -1254,6 +1254,28 @@ loop:
 	pha
 	push	1
 	rts			; zbranch will not branch
+
+; LEAVE ( --- )
+; compile leave statement
+	defcode "leave", FLAG_I
+leave:
+; compile time
+	push	$20	; store jsr
+	jsr	ccomma
+	push	@leave1	; store address of leave1
+	jsr	comma
+	NEXT
+; runtime
+@leave1:
+	stx	XSAVE
+	tsx
+	lda	$105,x		; index = limit
+	sta	$103,x
+	lda	$106,x
+	sta	$104,x
+	ldx	XSAVE
+	rts
+
 ;
 ; *** COMPILER ***
 ;
