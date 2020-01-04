@@ -1301,6 +1301,31 @@ i_statement:
 	inx
 	rts
 
+; J ( --- n )
+; compile j statement
+	defcode "j", FLAG_I
+j_statement:
+	push	$20		; store jsr
+	jsr	ccomma
+	push	@j1		; store address
+	jsr	comma
+	NEXT
+; runtime
+@j1:	stx	XSAVE
+	tsx			; stack: addr($101), index1($103), limit1($105), addr($107) index2($109), limit2($10b)
+	lda	$109,x		; get index2
+	sta	TMP1
+	lda	$10a,x
+	sta	TMP2
+	ldx	XSAVE
+	lda	TMP1		; save index to data stack
+	sta	DSTACK,x
+	lda	TMP2
+	sta	DSTACK+1,x
+	inx
+	inx
+	rts
+
 ;
 ; *** COMPILER ***
 ;
