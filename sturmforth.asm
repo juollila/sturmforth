@@ -479,6 +479,54 @@ emit:
 	dex
 	dex
 	NEXT
+
+; ." ( --- )
+; print a string (terminated with ")
+:	.word	:--		; defcode ".\"", FLAG_I
+	.byte	2 + FLAG_I
+	.byte	'.', '"'
+dotquote:
+	push	quote
+	jsr	word
+	lda	DSTACK-2,x
+	sta	TMP3
+	lda	DSTACK-1,x
+	sta	TMP4
+	dex			; remove address of string from the data stack
+	dex
+	ldy	#0		; check whether a string was found
+	lda	(TMP3),y
+	beq	@error
+	push	$20		; compile jsr primm
+	jsr	ccomma		; ccomma or comma should not tamper TMP3 and TMP4!!!
+	push	primm
+	jsr	comma
+@dotquote1:
+	inc	TMP3
+	bne	@dotquote2
+	inc	TMP4
+@dotquote2:
+	ldy	#1		; ignore leading space
+	lda	(TMP3),y
+	cmp	#quote		; branch to end if quote char
+	beq	@dotquote3
+	sta	DSTACK,x
+	inx
+	lda	#0		
+	sta	DSTACK,x
+	inx
+	jsr	ccomma		; compile the byte
+	jmp	@dotquote1
+@dotquote3:
+	inc	CPTR		; HACK: ignore the following quote in the input stream
+	push	0		; compile zero terminator for the primm
+	jsr	ccomma	
+	NEXT
+@error:
+	jsr	primm
+	.byte	"no string",eol,0
+	jmp	abort
+	
 		
 ; *** MEMORY (peek, poke and copy) ***
 ;
@@ -1628,8 +1676,7 @@ number:	ldy	#0
 	dex
 	jsr	primm
 	.byte	"undefined word", eol, 0
-	; todo: abort
-	NEXT
+	jmp	abort
 
 ; QUERY
 ; read input and fill input buffer

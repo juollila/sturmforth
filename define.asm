@@ -3,8 +3,9 @@
 
 ; constants
 	eol	= $0d
-	space	= $20
 	lowcase = $0e
+	space	= $20
+	quote	= $22
 
 ; zero page
 
