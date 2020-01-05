@@ -1313,7 +1313,7 @@ loop:
 	; compile time
 	push	$20		; store "jsr"
 	jsr	ccomma
-	push	@loop1		; store address of @loop1
+	push	loop1		; store address of @loop1
 	jsr	comma
 	push	$20		; store "jsr"
 	jsr	ccomma
@@ -1322,14 +1322,14 @@ loop:
 	jsr	comma		; store branch address
 	NEXT
 	; runtime
-@loop1:
+loop1:
 	
 	stx	XSAVE
 	tsx
 	inc	$103,x		; index = index + 1
-	bne	@loop2
+	bne	loop2
 	inc	$104,x
-@loop2:
+loop2:
 	clc			; limit - index
 	lda	$105,x
 	sbc	$103,x
@@ -1337,10 +1337,10 @@ loop:
 	sbc	$104,x
 	ldx	XSAVE
 	asl			; check if <= 0
-	bcs	@loop3
+	bcs	loop3
 	push	0
 	rts			; zbranch
-@loop3:	
+loop3:	
 	pla			; save return address
 	sta	TMP1
 	pla
@@ -1355,6 +1355,40 @@ loop:
 	pha
 	push	1
 	rts			; zbranch will not branch
+
+; +LOOP ( n --- )
+; compile +loop statement
+	defcode "+loop", FLAG_I
+ploop:
+	; compile time
+	push	$20		; store "jsr"
+	jsr	ccomma
+	push	@ploop1		; store address of @ploop1
+	jsr	comma
+	push	$20		; store "jsr"
+	jsr	ccomma
+	push	zbranch		; store address of branch
+	jsr	comma
+	jsr	comma		; store branch address
+	NEXT
+	; runtime
+@ploop1:
+	lda	DSTACK-2,x	; store n
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	dex			; remove one item from the data stack
+	dex
+	stx	XSAVE
+	tsx
+	clc			; index = index + n
+	lda	TMP1
+	adc	$103,x
+	sta	$103,x
+	lda	TMP2
+	adc	$104,x
+	sta	$104,x
+	jmp	loop2
 
 ; LEAVE ( --- )
 ; compile leave statement
