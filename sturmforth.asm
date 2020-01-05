@@ -1558,6 +1558,7 @@ create2:
 	dex
 	ldy	#0		; copy string length
 	lda	(TMP1),y
+	beq	@error1		; branch if no string
 	sta	AUX
 	inc	AUX		; length = length + length byte
 	lda	HEREPTR		; destination address
@@ -1605,6 +1606,10 @@ create2:
 	jsr	ccomma
 @create4:
 	NEXT
+@error1:
+	jsr	primm
+	.byte	"no string",eol,0
+	jmp	abort
 
 ; ALLOT ( n --- )
 ; allocate n bytes from the dictionary
@@ -1673,14 +1678,15 @@ number:	ldy	#0
 	bne	@number1
 	iny
 @number1:
-	; * 10
+	; * base
 	lda	TMP1
 	sta	DSTACK,x
 	inx
 	lda	TMP2
 	sta	DSTACK,x
 	inx
-	lda	#10
+	;lda	#10
+	lda	BASE
 	sta	DSTACK,x
 	inx
 	lda	#0
@@ -1691,8 +1697,20 @@ number:	ldy	#0
 	lda	buffer+1,y
 	cmp	#'0'
 	bcc	@error1
-	cmp	#':'
+	cmp	#'g'
 	bcs	@error1
+	cmp	#':'
+	bcc	@dec
+	cmp	#'a'
+	bcc	@error1
+	sec
+	sbc	#7		; 'a' - ':'
+	pha
+	lda	BASE		; check that we are in hex base
+	cmp	#16
+	bne	@error1
+	pla
+@dec:
 	sec	
 	sbc	#'0'
 	sta	DSTACK,x
