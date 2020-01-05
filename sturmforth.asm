@@ -423,7 +423,26 @@ dot:
 	jsr	printdec
 	jmp	printspc
 @dot1:	pla
-	jsr	printword
+	jsr	printint
+	jmp	printspc
+
+; u. ( n --- )
+; print unsigned value of n
+	defcode "u.", 0
+udot:
+	lda	DSTACK-2,x
+	ldy	DSTACK-1,x
+	dex
+	dex
+	pha
+	lda	#10
+	cmp	BASE
+	bne	@udot1
+	pla
+	jsr	printudec
+	jmp	printspc
+@udot1:	pla
+	jsr	printuint
 	jmp	printspc
 
 ; KEY ( --- n )
@@ -2228,6 +2247,85 @@ printword:
 	jsr	printbyte
 	rts	
 
+; printint routine prints signed 16-bit word (low endian) in hex format.
+;
+; input a = low byte
+; 	y = high byte
+; does not change registers
+printint:
+	pha
+	sta	TMP1
+	tya
+	sta	TMP2
+	lda	TMP2		; set flags
+	bpl	printuint2
+	lda	#0		; int = 0 - int
+	sec
+	sbc	TMP1
+	sta	TMP1
+	lda	#0
+	sbc	TMP2
+	sta	TMP2
+	lda	#'-'		; print sign
+	jsr	chrout
+	jmp	printuint2
+
+; printuint routine prints unsigned 16-bit word (low endian) in hex format.
+; a = low byte
+; y = high byte
+; does not change registers
+printuint:
+	pha
+	sta	TMP1
+	tya
+	sta	TMP2
+printuint2:
+	;lda	#'$'
+	;jsr	chrout
+	lda	TMP2
+	beq	@printint1	; there are 1-2 digits
+	cmp	#$10
+	bcc	@printh3	; there are 3 digits
+	jmp	@printh4	; thre are 4 digits
+@printint1:
+	lda	TMP1
+	cmp	#$10
+	bcc	@printh1	; there is 1 digit
+	jmp	@printh2		; there are two digits
+@printh4:
+	lda	TMP2
+	lsr
+	lsr
+	lsr
+	lsr
+	tay
+	lda	@hex,y
+	jsr	chrout
+@printh3:
+	lda	TMP2
+	and	#$0f
+	tay
+	lda	@hex,y
+	jsr	chrout
+@printh2:
+	lda	TMP1
+	lsr
+	lsr
+	lsr
+	lsr
+	tay
+	lda	@hex,y
+	jsr	chrout
+@printh1:
+	lda	TMP1
+	and	#$0f
+	tay
+	lda	@hex,y
+	jsr	chrout
+	pla
+	rts
+@hex:	.byte	"0123456789abcdef"
+	
 ; prints 16-bit word in decimal (string)
 ;
 ; input	a = low byte
@@ -2247,7 +2345,7 @@ printdec:
 	sty	TMP3
 	;tsx
 	lda	AUX+1
-	bpl	@bina
+	bpl	printudec2
 	lda	#0
 	sec
 	sbc	AUX
@@ -2257,7 +2355,23 @@ printdec:
 	sta	AUX+1
 	lda	#'-'
 	jsr	chrout
-@bina:
+	jmp	printudec2
+; prints unsigned 16-bit word in decimal (string)
+; a = low byte
+; y = high byte
+printudec:
+	pha
+	sta	AUX
+	tya
+	sta	AUX+1
+	pha
+	txa
+	pha	
+	ldy	#0
+	sty	TMP1
+	sty	TMP2
+	sty	TMP3
+printudec2:
 	sed
 @bin0:	asl	AUX
 	rol	AUX+1
