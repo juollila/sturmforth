@@ -79,6 +79,16 @@ drop:
 	dex
 	NEXT
 
+; 2DROP ( n n --- )
+; remove top two entries from the stack.
+	defcode "2drop", 0
+twodrop:
+	dex
+	dex
+	dex
+	dex
+	NEXT
+
 ; DUP ( n --- n n )
 ; duplicate the top entry on the stack.
 	defcode	"dup", 0
@@ -584,7 +594,7 @@ dotparen:
 	.byte	"no string",eol,0
 	jmp	abort
 	
-
+;
 ; *** DISK I/O ***
 ;
 
@@ -653,6 +663,7 @@ include0:
 	.byte	"disk i/o error",eol,0
 	jmp	abort
 
+;
 ; *** MEMORY (peek, poke and copy) ***
 ;
 
@@ -1156,6 +1167,59 @@ bitxor:	lda	DSTACK-4,x
 	sta	DSTACK-3,x
 	jmp	drop
 
+;
+; *** DOUBLE LENGTH ***
+;
+
+; D+ ( d1 d2 --- d1+d2 )
+; add
+
+; stack: item1 low, item1 high, item2 low, item2 high
+;        8,7        6,5         4,3        2,1
+
+	defcode "d+", 0
+dplus:
+	clc
+	lda	DSTACK-8,x	; add low int
+	adc	DSTACK-4,x
+	sta	DSTACK-8,x
+	lda	DSTACK-7,x
+	adc	DSTACK-3,x
+	sta	DSTACK-7,x
+
+	lda	DSTACK-6,x	; add high int
+	adc	DSTACK-2,x
+	sta	DSTACK-6,x
+	lda	DSTACK-5,x
+	adc	DSTACK-1,x
+	sta	DSTACK-5,x
+
+	dex			; pop two items
+	dex
+	dex
+	dex
+
+	NEXT
+	
+; D< ( d1 d2 --- flag )
+; d1 < d2
+	defcode "d<", 0
+dless:
+	lda	DSTACK-8,x
+	cmp	DSTACK-4,x
+	lda	DSTACK-7,x
+	sbc	DSTACK-3,x
+	lda	DSTACK-6,x
+	sbc	DSTACK-2,x
+	lda	DSTACK-5,x
+	sbc	DSTACK-1,x
+	bvc	@less1
+	eor	#$80
+@less1:	bmi	@less2
+	jsr	twodrop
+	jmp	pushfalse
+@less2:	jsr	twodrop
+	jmp	pushtrue
 ;
 ; *** COMPARISON ***
 ;
