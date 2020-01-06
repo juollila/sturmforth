@@ -387,6 +387,10 @@ last:
 base:
 	variable BASE
 
+	defcode "device", 0
+device:
+	variable DEVICE
+
 ; HEX ( --- )
 ; changes base to hex
 	defcode "hex", 0
@@ -548,7 +552,7 @@ dotquote:
 
 ; .( ( --- )
 ; print a string which is terminated with )
-	defcode ".("
+	defcode ".(", 0
 dotparen:
 	push	')'
 	jsr	word
@@ -580,7 +584,75 @@ dotparen:
 	.byte	"no string",eol,0
 	jmp	abort
 	
-		
+
+; *** DISK I/O ***
+;
+
+; INCLUDE ( --- )
+; reads forth file from device
+; file name is read from the input stream
+	defcode "include", 0
+include0:
+	stx	XSAVE
+
+	lda	#1		; file number
+	ldx	DEVICE
+	ldy	#0		; secondary address
+	jsr	setlfs
+
+	ldx	XSAVE
+	lda	#space		; get name of forth file
+	sta	DSTACK,x
+	lda	#0
+	sta	DSTACK+1,x
+	inx
+	inx
+	jsr	word
+	lda	DSTACK-2,x	; string address
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	dex			; delete addr of string from stack
+	dex
+	stx	XSAVE
+
+	ldy	#0		; copy string length
+	lda	(TMP1),y
+	beq	@error1		; branch if no string
+	sta	LOAD		; set flag
+	inc	TMP1		; skip length byte
+	bne	@include1
+	inc	TMP2
+@include1:
+	ldx	TMP1
+	ldy	TMP2
+	jsr	setnam
+;	lda	#$80
+;	jsr	setmsg
+	jsr	open
+	bcs	@error2
+;	jsr	readst
+;	cmp	#0
+;	bne	@error2
+	ldx	#1		; file number
+	jsr	chkin
+	bcs	@error2
+;	jsr	readst
+;	cmp	#0
+;	bne	@error2
+
+	ldx	XSAVE
+	NEXT
+
+@error1:
+	jsr	primm
+	.byte	"no string",eol,0
+	jmp	abort
+@error2:
+	jsr	primm
+	.byte	"disk i/o error",eol,0
+	jmp	abort
+
 ; *** MEMORY (peek, poke and copy) ***
 ;
 
@@ -1512,8 +1584,6 @@ repeat:
 	jsr	store
 	NEXT
 	
-
-; compile repeat statement
 ;
 ; *** COMPILER ***
 ;
@@ -1784,7 +1854,7 @@ number:	ldy	#0
 	jmp	abort
 
 ; QUERY
-; read input and fill input buffer
+; read input from file or keyboard and fill input buffer
 	defcode "query", 0
 query:
 	stx	XSAVE
@@ -1792,16 +1862,48 @@ query:
 	stx	CPTR
 @query1:
 	jsr	chrin
+	cmp	#lfeed		; convert linefeed to cr
+	bne	@query2
+	lda	#eol
+@query2:
 	sta	buffer+1,x
 	inx
 	cpx	#$41		; check max length
 	beq	@error1
+	;sta	TMP4
+	pha
+	lda	LOAD		; skip i/o status checking if read from keyboard
+	beq	@query4
+	jsr	readst
+	cmp	#0
+	bne	@query3		; branch if eof or error
+@query4:
+	;lda	TMP4
+	pla
 	cmp	#eol
-	bne	@query1
+	bne	@query1		; branch if not end of line
+@query5:
 	dex
 	stx	buffer
 	ldx	XSAVE
 	NEXT
+@query3:
+	cmp	#eof
+	beq	@eof
+	jsr	primm
+        .byte   "disk i/o error query",eol,0
+        jmp     abort      
+@eof:	txa			; save x because clall modifies it
+	pha
+	jsr	clall
+	jsr	primm
+	.byte	eol, "eof", eol, 0
+	pla
+	tax
+	lda	#0		; eof thus we can stop load
+	sta	LOAD
+	pla
+	jmp	@query5
 @error1:
 	jsr	primm
 	.byte	" ?", eol, 0
@@ -1810,6 +1912,34 @@ query:
 	ldx	XSAVE
 	NEXT
 
+; QUERY
+; read input and fill input buffer
+;	defcode "query", 0
+;query:
+;	stx	XSAVE
+;	ldx	#0
+;	stx	CPTR
+;@query1:
+;	jsr	chrin
+;@query2:
+;	sta	buffer+1,x
+;	inx
+;	cpx	#$41		; check max length
+;	beq	@error1
+;	cmp	#eol
+;	bne	@query1
+;	dex
+;	stx	buffer
+;	ldx	XSAVE
+;	NEXT
+;
+;@error1:
+;	jsr	primm
+;	.byte	" ?", eol, 0
+;	lda	#eol
+;	sta	buffer+1
+;	ldx	XSAVE
+;	NEXT
 
 ; WORD ( delimiter --- string )
 ; get the next word from the input stream
@@ -1992,8 +2122,11 @@ execute:
 
 	defcode "interpret", 0
 interpret:
+	lda	LOAD
+	bne	@interpret0
 	jsr	primm
 	.byte	"ok ",eol,0
+@interpret0:
 	jsr	query
 @interpret1:
 	lda	#$20		; space is delimiter
@@ -2047,9 +2180,13 @@ interpret:
 ; COLD
 ; cold start
 	defcode "cold", 0
-cold:	tsx
-	stx	SPSAVE		; save original stack pointer
+cold:	; tsx
+	; stx	SPSAVE		; save original stack pointer
 				; (i.e. sp can be restored when bye command is supported.
+	lda	#8
+	ldy	#0
+	sta	DEVICE
+	sty	DEVICE+1
 	lda	#<lastword	; initialize last word pointer	
 	sta	LASTPTR
 	lda	#>lastword
@@ -2060,6 +2197,7 @@ cold:	tsx
 	sta	HEREPTR+1
 	lda	#10		; set base to decimal
 	sta	BASE
+	sty	BASE+1
 	jsr	primm
 	.byte	eol,lowcase,"    **** SturmFORTH ****",eol, eol
         .byte               "    Coded by Juha Ollila",eol,eol,0
@@ -2068,7 +2206,9 @@ cold:	tsx
 ; ABORT
 	defcode "abort", 0
 abort:	
+	jsr	clall		; close files and set stdin and stdout
 	ldx	#0		; initialize data stack ptr
+	stx	LOAD		; load is not ongoing anymore
 	jmp	quit
 
 ; QUIT
@@ -2077,46 +2217,17 @@ lastword:
 	defcode "quit", 0
 quit:	txa		; quit does not tamper data stack ptr
 	tay
-	ldx	SPSAVE	; initialize return stack
+	; ldx	SPSAVE	; initialize return stack
+	ldx	#$ff
 	txs
 	lda	#0	; initialize interpreter state and immediate mode flags
 	sta	STATE
+	sta	STATE+1
 	sta	IMM
 	tya
 	tax
 	jmp	interpret
 	jmp	:-	; makes assembler happy
-
-	
-;          Nucleus layer
-;
-;               !  *  */  */MOD  +  +!  -  /  /MOD  0<  0=  0>  1+  1-  2+
-;               2-  2/  <  =  >  >R  ?DUP  @  ABS  AND  C!  C@  CMOVE
-;               CMOVE>  COUNT  D+  D<  DEPTH  DNEGATE  DROP  DUP  EXECUTE
-;               EXIT  FILL  I  J  MAX  MIN  MOD  NEGATE  NOT  OR  OVER  PICK
-;               R>  R@  ROLL  ROT  SWAP  U<  UM*  UM/MOD  XOR
-;
-;
-;          Device layer
-;
-;               BLOCK  BUFFER  CR  EMIT  EXPECT  FLUSH  KEY  SAVE-BUFFERS
-;               SPACE  SPACES  TYPE  UPDATE
-;
-;
-;          Interpreter layer
-;
-;               #  #>  #S  #TIB  '  (  -TRAILING  .  .(  <#  >BODY  >IN
-;               ABORT  BASE  BLK  CONVERT  DECIMAL  DEFINITIONS  FIND
-;               FORGET  FORTH  FORTH-83  HERE  HOLD  LOAD  PAD  QUIT  SIGN
-;               SPAN  TIB  U.  WORD
-;
-;
-;          Compiler layer
-;
-;               +LOOP  ,  ."  :  ;  ABORT"  ALLOT  BEGIN  COMPILE  CONSTANT
-;               CREATE  DO  DOES>  ELSE  IF  IMMEDIATE  LEAVE  LITERAL  LOOP
-;               REPEAT  STATE  THEN  UNTIL  VARIABLE  VOCABULARY  WHILE  [
-;               [']  [COMPILE]  ]
 
 trace:
 	stx	XSAVE
