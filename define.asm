@@ -22,18 +22,20 @@
 	MAXSTACK = $6f
 
 ; other memory locations
-	buffer	= $200 ; text buffer
-	AUX	= $2f0 ; temporary register (2 bytes)
-	;SPSAVE	= $2f2 ; for debugging purposes (exit to basic)
+	buffer	= $200	; text buffer
+	BUILDS	= $2ee	; temporary storage for <BUILDS and DOES>
+			; (return or data stack cannot be used)
+	AUX	= $2f0	; temporary register (2 bytes)
+	;SPSAVE	= $2f2	; for debugging purposes (exit to basic)
 	DEVICE	= $2f2
-	STATE	= $2f4 ; compilation state
-	HEREPTR	= $2f6 ; data space pointer
-	LASTPTR = $2f8 ; last dictionary entry
-	CPTR	= $2fa ; character position in buffer
-	LOAD	= $2fb ; load from a device flag
-	BASE	= $2fc ; numeric base
-	IMM	= $2fe ; immediate mode (used by find and interpreter)
-	CREATE	= $2ff ; create1 vs create flag
+	STATE	= $2f4	; compilation state
+	HEREPTR	= $2f6	; data space pointer
+	LASTPTR = $2f8	; last dictionary entry
+	CPTR	= $2fa	; character position in buffer
+	LOAD	= $2fb	; load from a device flag
+	BASE	= $2fc	; numeric base
+	IMM	= $2fe	; immediate mode (used by find and interpreter)
+	CREATE	= $2ff	; create1 vs create flag
 
 ; kernal functions
 	readst	= $ffb7

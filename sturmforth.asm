@@ -1699,6 +1699,37 @@ leftbr:
 	sta	STATE
 	NEXT
 
+; CREATE (interpreter mode):
+; create a dictionary entry
+;
+; CREATE (runtime):
+; copies the address to the stack
+;
+; : xxx <BUILDS aaa DOES> bbb ; (compile time):
+; execute : = create1 a dictionary entry for xxx
+; execute <BUILDS = compile jsr builds1
+; compile aaa
+; execute DOES> = compile push address (bbb) to stack, compile jmp does1
+; compile bbb
+; compile rts
+;
+; xxx yyy (runtime):
+; executes builds1 = create a dict entry for yyy, compile push instance (yyy) addr to stack,
+;                    compile jsr branch, copy address to "BUILDS", compile dummy addr
+; executes aaa
+; push address (bbb) to stack
+; executes does1 = copy address from "BUILDS" to branch operand location
+;
+; yyy (runtime):
+; copies instance (yyy) address to the stack
+; branch to bbb
+; executes bbb
+; rts
+
+; In memory:
+; dict entry for xxx, jsr builds1, aaa, push bbb, jmp does1, bbb, rts
+; dict entry for yyy, push yyy, jsr branch, address of bbb 
+
 ; CREATE ( --- )
 ; create a new word
 ; expects a name in input stream
@@ -1779,6 +1810,62 @@ create2:
 	.byte	"no string",eol,0
 	jmp	abort
 
+; <BUILDS ( --- )
+	defcode "<builds", FLAG_I
+builds:
+	push	$20		; jsr builds1
+	jsr	ccomma
+	push	@builds1
+	jsr	comma
+	NEXT
+@builds1:
+	jsr	create1		; create a dict entry
+	jsr	here		; address of branch operand = HERE + 10:
+	jsr	fetch		; jsr lit = 3 bytes, address = 2 bytes
+	push	10		; jsr branch = 3 bytes, branch address = 2 bytes
+	jsr	plus
+	jsr	literal		; save literal (address)
+	push    $20             ; jsr branch
+        jsr     ccomma
+        push    branch
+        jsr     comma
+        jsr     here            ; save location of branch operand to return stack
+        jsr     fetch
+	lda	DSTACK-2,x
+	sta	BUILDS
+	lda	DSTACK-1,x
+	sta	BUILDS+1
+	dex
+	dex	
+        push    $1234           ; store dummy address
+        jsr     comma
+	NEXT
+
+; DOES> ( --- )
+; define the runtime action of word created by a high-level defining word
+	defcode "does>", FLAG_I
+	; compile time
+does:
+	jsr	here
+	jsr	fetch
+	push	8		; jsr lit = 3 bytes, here+8 = 2 bytes, jmp @does1 = 3 bytes
+	jsr	plus
+	jsr	literal
+	push	$4c		; store jmp
+	jsr	ccomma
+	push	@does1
+	jsr	comma		; store address (does1)
+	NEXT
+@does1:
+	lda	BUILDS
+	sta     DSTACK,x
+        inx
+        lda     BUILDS+1
+        sta     DSTACK,x
+        inx       
+	jsr	store
+	NEXT
+
 ; ALLOT ( n --- )
 ; allocate n bytes from the dictionary
 	defcode "allot", 0
@@ -1811,11 +1898,11 @@ ccomma:	jsr	here
 ; expects a name 
 	defcode ":", 0
 colon:
+	jsr	rightbr		; enter into the compilation mode
 	jsr	create1		; create word (dict entry)
 	jsr	last		; hide the created word
 	jsr	fetch
 	jsr	hide
-	jsr	rightbr		; enter into the compilation mode
 	NEXT			; EXIT
 
 ; ; ( --- )
@@ -2223,6 +2310,17 @@ interpret:
 	beq	@execute2	; branch if in interpreter mode
 	push	$20		; store jsr
 	jsr	ccomma
+	;lda	DSTACK-2,x	; HACK
+	;cmp	#<create	; this is needed to handle : xxx CREATE yyy correctly
+	;bne	@interpret2b
+	;lda	DSTACK-1,x
+	;cmp	#>create
+	;bne	@interpret2b
+	;lda	#<create1
+	;sta	DSTACK-2,x
+	;lda	#>create1
+	;sta	DSTACK-1,x	; end of HACK
+@interpret2b:
 	jsr	comma		; save address to dictionary
 	jmp	@interpret1
 @execute1:
