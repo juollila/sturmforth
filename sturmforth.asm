@@ -39,10 +39,6 @@ init:	jmp	cold
 ; code (1-n bytes)
 
 
-; tail for the linked list
-:	.word	0
-	.byte	0
-
 .macro	defcode name, flags
 :	.word	:--
 	.local	name1, name2
@@ -66,6 +62,46 @@ name2:
 	inx
 .endmacro
 
+;
+; *** CHECK STACK USAGE ***
+;
+
+checkoflow:
+	cpx	#MAXSTACK
+	bcs	@stackoverflow
+	rts
+@stackoverflow:
+	jsr	primm
+	.byte   "stack overflow",eol,0
+	jmp	abort
+check4:
+	cpx	#8
+	bcc	stackunderflow
+	rts			; return from subs can be omitted for size optimization
+check3:
+	cpx	#6
+	bcc	stackunderflow
+	rts
+check2:
+	cpx	#4
+	bcc	stackunderflow
+	rts
+check1:
+	cpx	#2
+	bcc	stackunderflow
+	rts
+stackunderflow:
+	jsr	primm
+	.byte   "stack underflow",eol,0
+	jmp	abort
+
+;
+; *** TAIL OF THE LINKED LIST ***
+;
+
+:	.word	0
+	.byte	0
+
 
 ;
 ; *** STACK MANIPULATION ***
@@ -75,6 +111,7 @@ name2:
 ; remove the top entry from the stack.
 	defcode	"drop", 0
 drop:
+	jsr	check1
 	dex
 	dex
 	NEXT
@@ -83,6 +120,7 @@ drop:
 ; remove top two entries from the stack.
 	defcode "2drop", 0
 twodrop:
+	jsr	check2
 	dex
 	dex
 	dex
@@ -93,30 +131,35 @@ twodrop:
 ; duplicate the top entry on the stack.
 	defcode	"dup", 0
 dup:
+	jsr	check1
 	lda	DSTACK-2,x
 	sta	DSTACK,x
 	lda	DSTACK-1,x
 	sta	DSTACK+1,x
 	inx
 	inx
+	jsr	checkoflow
 	NEXT
 
 ; OVER ( n1 n2 --- n1 n2 n1 )
 ; duplicate the second item on the stack.
 	defcode "over", 0
 over:
+	jsr	check2
 	lda	DSTACK-4,x
 	sta	DSTACK,x
 	lda	DSTACK-3,x
 	sta	DSTACK+1,x
 	inx
 	inx
+	jsr	checkoflow
 	NEXT
 
 ; ROT ( n1 n2 n3 --- n2 n3 n1 )
 ; rotate the third item to the top of the stack.
 	defcode	"rot", 0
-rot:	; save n1
+rot:	jsr	check3
+	; save n1
 	lda	DSTACK-6,x
 	pha
 	lda	DSTACK-5,x
@@ -141,7 +184,8 @@ rot:	; save n1
 ; SWAP ( n1 n2 --- n2 n1 )
 ; swap the first and the second item on the stack.
 	defcode "swap", 0
-swap:	; save n1
+swap:	jsr	check2
+	; save n1
 	lda	DSTACK-4,x
 	pha
 	lda	DSTACK-3,x
@@ -161,7 +205,8 @@ swap:	; save n1
 ; ?DUP ( n --- n (n) )
 ;  duplicate the top entry of the stack if it is non zero.
 	defcode "?dup", 0
-qdup:	lda	DSTACK-1,x
+qdup:	jsr	check1
+	lda	DSTACK-1,x
 	ora	DSTACK-2,x
 	beq	@zero
 	jmp	dup
@@ -177,6 +222,7 @@ depth:	txa
 	sta	DSTACK+1,x
 	inx
 	inx
+	jsr	checkoflow
 	NEXT
 
 ; PICK ( n1 --- n2 )
@@ -184,7 +230,8 @@ depth:	txa
 ; 0 PICK is equivalent to DUP   
 ; 1 PICK is equivalent to OVER
 	defcode "pick", 0
-pick:	stx	XSAVE
+pick:	
+	stx	XSAVE
 	; get n1 and ignore high byte
 	lda	DSTACK-2,x
 	tay
@@ -193,8 +240,10 @@ pick:	stx	XSAVE
 	bmi	@pick2
 	dex
 	dex
+	bmi	@error
 	jmp	@pick1
 @pick2:
+	jsr	check2
 	; copy item
 	lda	DSTACK-4,x
 	sta	TMP1
@@ -205,13 +254,13 @@ pick:	stx	XSAVE
 	sta	DSTACK-2,x
 	lda	TMP2
 	sta	DSTACK-1,x
-
 	NEXT
+@error:	jmp	stackunderflow
 
 ; >R ( n --- )
 ; move the top entry of the stack to the return stack.
 	defcode ">r", 0
-tor:
+tor:	jsr	check1
 	; save top item
 	lda	DSTACK-2,x
 	sta	TMP1
@@ -268,6 +317,7 @@ rfrom:
 	; adjust stack pointer
 	inx
 	inx
+	jsr	checkoflow
 	NEXT
 
 ; R@ ( --- n )
@@ -290,6 +340,7 @@ rfetch:
 	; adjust stack pointer
 	inx
 	inx
+	jsr	checkoflow
 	NEXT
 
 ; 0 ( --- 0 )
@@ -300,6 +351,7 @@ zero:	lda	#0
 	inx
 	sta	DSTACK,x
 	inx
+	jsr	checkoflow
 	NEXT
 
 ; 1 ( --- 1 )
@@ -311,6 +363,7 @@ one:	ldy	#1
 	dey
 	sty	DSTACK,x
 	inx
+	jsr	checkoflow
 	NEXT
 
 ; 2 ( --- 2 )
@@ -322,6 +375,7 @@ two:	lda	#2
 	lda	#0
 	sta	DSTACK,x
 	inx
+	jsr	checkoflow
 	NEXT
 
 ;
@@ -332,6 +386,7 @@ two:	lda	#2
 ; compile literal
 	defcode "literal", FLAG_I
 literal:
+	jsr	check1
 	push	$20		; store "jsr"
 	jsr	ccomma
 	push	lit		; store address of lit
@@ -365,6 +420,7 @@ lit:
 	lda	(TMP1),y
 	sta	DSTACK,x
 	inx
+	jsr	checkoflow
 	NEXT
 
 ;
@@ -378,6 +434,7 @@ lit:
 	lda	#>location
 	sta	DSTACK,x
 	inx
+	jsr	checkoflow
 	NEXT
 .endmacro
 
@@ -424,7 +481,7 @@ decimal:
 ; . ( n --- )
 ; print value of n
 	defcode ".", 0
-dot:
+dot:	jsr	check1
 	lda	DSTACK-2,x
 	ldy	DSTACK-1,x
 	dex
@@ -443,7 +500,7 @@ dot:
 ; u. ( n --- )
 ; print unsigned value of n
 	defcode "u.", 0
-udot:
+udot:	jsr	check1
 	lda	DSTACK-2,x
 	ldy	DSTACK-1,x
 	dex
@@ -473,6 +530,7 @@ key:
 	lda	#0
 	sta	DSTACK,x
 	inx
+	jsr	checkoflow
 	NEXT
 
 ; CR ( --- )
@@ -494,7 +552,7 @@ printspc:
 ; SPACES ( n --- )
 ; print n space characters
 	defcode "spaces", 0
-spaces:
+spaces:	jsr	check1
 @spaces1:
 	jsr	printspc
 	dec	DSTACK-2,x
@@ -506,7 +564,7 @@ spaces:
 ; EMIT ( n --- )
 ; print a character (petscii code n)
 	defcode "emit", 0
-emit:
+emit:	jsr	check1
 	lda	DSTACK-2,x
 	jsr	chrout
 	dex
@@ -670,7 +728,7 @@ include0:
 ; ! ( n addr --- )
 ; store int to the addr
 	defcode "!", 0
-store:	
+store:	jsr	check2
 	lda     DSTACK-2,x      ; save address
         sta     TMP1
         lda     DSTACK-1,x
@@ -690,7 +748,7 @@ store:
 ; @ ( addr --- n )
 ; fetches int from the addr
 	defcode "@", 0
-fetch:
+fetch:	jsr	check1
 	lda     DSTACK-2,x      ; save address
         sta     TMP1
         lda     DSTACK-1,x
@@ -706,7 +764,7 @@ fetch:
 ; C! ( n addr --- )
 ; store byte to the addr
 	defcode "c!", 0
-cstore:
+cstore:	jsr	check2
 	lda     DSTACK-2,x      ; save address
         sta     TMP1
         lda     DSTACK-1,x
@@ -723,7 +781,7 @@ cstore:
 ; C@ ( addr --- n )
 ; fetches byte from the addr
 	defcode "c@", 0
-cfetch:	
+cfetch:	jsr	check1
 	lda     DSTACK-2,x      ; save address
         sta     TMP1
         lda     DSTACK-1,x
@@ -739,6 +797,7 @@ cfetch:
 ; n is added to the value at addr
 	defcode "+!", 0
 plusstore:
+	jsr	check2
 	jsr	swap	; ( addr n )
 	jsr	over	; ( addr n addr )
 	jsr	fetch	; ( addr n v )
@@ -751,7 +810,7 @@ plusstore:
 ; copy n bytes from source to destination (from low to high)
 
 	defcode "cmove", 0
-cmove:
+cmove:	jsr	check3
 	jsr	initcmove
 @copy2:
 @copy2a:
@@ -782,6 +841,7 @@ cmove:
 ; copy n bytes from source to destination (from high to low)
 	defcode "<cmove", 0
 revcmove:
+	jsr	check3
 	jsr	initcmove
 @copy3:
 	clc
@@ -854,6 +914,7 @@ initcmove:			; routine used by cmove and <cmove
 ; create a constant, e.g. 0 constant nil
 	defcode "constant", 0
 constant:
+	jsr	check1
 	jsr	create1
 	jsr	literal
 	push	$60		; rts
@@ -876,7 +937,7 @@ var:
 ; + ( n1 n2 --- n1+n2 )
 ; add
 	defcode "+", 0
-plus:
+plus:	jsr	check2
 	clc
 	lda	DSTACK-4,x
 	adc	DSTACK-2,x
@@ -891,7 +952,7 @@ plus:
 ; - ( n1 n2 --- n1-n2 )
 ; subtract
 	defcode "-", 0
-minus:
+minus:	jsr	check2
 	sec
 	lda	DSTACK-4,x
 	sbc	DSTACK-2,x
@@ -907,6 +968,7 @@ minus:
 ; add one.
 	defcode "1+", 0
 oneplus:
+	jsr	check1
 	clc
 	lda	DSTACK-2,x
 	adc	#1
@@ -920,6 +982,7 @@ oneplus:
 ; add two.
 	defcode "2+", 0
 twoplus:
+	jsr	check1
 	clc
 	lda	DSTACK-2,x
 	adc	#2
@@ -933,6 +996,7 @@ twoplus:
 ; subtract one
 	defcode "1-", 0
 oneminus:
+	jsr	check1
 	sec
 	lda	DSTACK-2,x
 	sbc	#1
@@ -946,6 +1010,7 @@ oneminus:
 ; subtract two
 	defcode "2-", 0
 twominus:
+	jsr	check1
 	sec
 	lda	DSTACK-2,x
 	sbc	#2
@@ -958,7 +1023,7 @@ twominus:
 ; 2* ( n --- n*2 )
 ; multiply by two
 	defcode "2*", 0
-twomul:
+twomul:	jsr	check1
 	asl	DSTACK-2,x
 	rol	DSTACK-1,x
 	NEXT
@@ -966,14 +1031,15 @@ twomul:
 ; 2/ ( n --- n/2 )
 ; divide by two
 	defcode "2/", 0
-twodiv:
+twodiv:	jsr	check1
 	lsr	DSTACK-1,x
 	ror	DSTACK-2,x
 	NEXT
 
 ; NEGATE ( n --- -n )
 	defcode "negate", 0
-negate:	lda	#0
+negate:	jsr	check1
+	lda	#0
 	sec
 	sbc	DSTACK-2,x
 	sta	DSTACK-2,x
@@ -986,7 +1052,7 @@ negate:	lda	#0
 ; * ( n1 n2 --- n1*n2 )
 ; multiply.
 	defcode "*", 0
-mul:
+mul:	jsr	check2
 	lda	DSTACK-3,x	; check sign of result
 	eor	DSTACK-1,x
 	php			; save sign
@@ -1035,7 +1101,7 @@ mul:
 ; /MOD ( n1 n2 --- (n1 mod n2) n1/n2 )
 ; divide.
 	defcode "/mod", 0
-divmod:	
+divmod:	jsr	check2
 	lda	DSTACK-3,x	; check sign of result
 	eor	DSTACK-1,x
 	php			; save sign
@@ -1098,7 +1164,8 @@ divide:	jsr	divmod
 ; MIN ( n1 n2 --- min )
 ; leave lesser of two items.
 	defcode "min", 0
-min:	jsr	over
+min:	jsr	check2
+	jsr	over
 	jsr	over
 	jsr	less
 	lda	DSTACK-2,x
@@ -1112,7 +1179,8 @@ min:	jsr	over
 ; MAX ( n1 n2 --- max )
 ; leave greater of two items.
 	defcode "max", 0
-max:	jsr	over
+max:	jsr	check2
+	jsr	over
 	jsr	over
 	jsr	greater
 	lda	DSTACK-2,x
@@ -1126,7 +1194,8 @@ max:	jsr	over
 ; ABS ( n --- |n| )
 ; absolute value.
 	defcode "abs", 0
-abs:	jsr	dup
+abs:	jsr	check1
+	jsr	dup
 	jsr	zeroless
 	lda	DSTACK-2,x
 	beq	@abs1
@@ -1137,7 +1206,8 @@ abs:	jsr	dup
 ; AND ( n1 n2 --- (n1 and n2) )
 ; bitwise logical and.
 	defcode "and", 0
-bitand:	lda	DSTACK-4,x
+bitand:	jsr	check2
+	lda	DSTACK-4,x
 	and	DSTACK-2,x
 	sta	DSTACK-4,x
 	lda	DSTACK-3,x
@@ -1148,7 +1218,8 @@ bitand:	lda	DSTACK-4,x
 ; OR ( n1 n2 --- (n1 or n2) )
 ; bitwise logical or.
 	defcode "or", 0
-bitor:	lda	DSTACK-4,x
+bitor:	jsr	check2
+	lda	DSTACK-4,x
 	ora	DSTACK-2,x
 	sta	DSTACK-4,x
 	lda	DSTACK-3,x
@@ -1159,7 +1230,8 @@ bitor:	lda	DSTACK-4,x
 ; XOR ( n1 n2 --- (n1 xor n2) )
 ; bitwise logical xor.
 	defcode "xor", 0
-bitxor:	lda	DSTACK-4,x
+bitxor:	jsr	check2
+	lda	DSTACK-4,x
 	eor	DSTACK-2,x
 	sta	DSTACK-4,x
 	lda	DSTACK-3,x
@@ -1178,7 +1250,7 @@ bitxor:	lda	DSTACK-4,x
 ;        8,7        6,5         4,3        2,1
 
 	defcode "d+", 0
-dplus:
+dplus:	jsr	check4
 	clc
 	lda	DSTACK-8,x	; add low int
 	adc	DSTACK-4,x
@@ -1204,7 +1276,7 @@ dplus:
 ; D< ( d1 d2 --- flag )
 ; d1 < d2
 	defcode "d<", 0
-dless:
+dless:	jsr	check4
 	lda	DSTACK-8,x
 	cmp	DSTACK-4,x
 	lda	DSTACK-7,x
@@ -1227,7 +1299,8 @@ dless:
 ; = ( n1 n2 --- flag )
 ; true if two top items are equal.
 	defcode "=", 0
-equal:	lda	DSTACK-4,x
+equal:	jsr	check2
+	lda	DSTACK-4,x
 	cmp	DSTACK-2,x
 	bne	@equal0
 	lda	DSTACK-3,x
@@ -1261,6 +1334,7 @@ pushfalse:
 ; < ( n1 n2 --- flag )
 ; true if n1<n2.
 	defcode "<", 0
+	jsr	check2
 less:	lda	DSTACK-4,x
 	cmp	DSTACK-2,x
 	lda	DSTACK-3,x
@@ -1275,6 +1349,7 @@ less:	lda	DSTACK-4,x
 ; true if n1>n2. n2<n1
 	defcode ">", 0
 greater:
+	jsr	check2
 	lda	DSTACK-2,x
 	cmp	DSTACK-4,x
 	lda	DSTACK-1,x
@@ -1291,6 +1366,7 @@ greater:
 ; true if n = 0
 	defcode "0=", 0
 zeroequal:
+	jsr	check1
 	jsr	zero
 	jmp	equal
 
@@ -1298,6 +1374,7 @@ zeroequal:
 ; true if n < 0
 	defcode "0<", 0
 zeroless:
+	jsr	check1
 	jsr	zero
 	jmp	less
 
@@ -1305,6 +1382,7 @@ zeroless:
 ; true if n > 0
 	defcode "0>", 0
 zerogreater:
+	jsr	check1
 	jsr	zero
 	jmp	greater
 
@@ -1346,6 +1424,7 @@ branch:
 ; branch if top item is zero
 	defcode "0branch", 0
 zbranch:
+	jsr	check1
 	lda	DSTACK-2,x
 	ora	DSTACK-1,x
 	php
@@ -1420,6 +1499,7 @@ do:
         NEXT
 	; runtime
 @do1:
+	jsr	check2
 	pla			; save return address
 	sta	TMP1
 	pla
@@ -1459,7 +1539,6 @@ loop:
 	NEXT
 	; runtime
 loop1:
-	
 	stx	XSAVE
 	tsx
 	inc	$103,x		; index = index + 1
@@ -1509,6 +1588,7 @@ ploop:
 	NEXT
 	; runtime
 @ploop1:
+	jsr	check1
 	lda	DSTACK-2,x	; store n
 	sta	TMP1
 	lda	DSTACK-1,x
@@ -1571,6 +1651,7 @@ i_statement:
 	sta	DSTACK+1,x
 	inx
 	inx
+	jsr	checkoflow
 	rts
 
 ; J ( --- n )
@@ -1597,6 +1678,7 @@ j_statement:
 	sta	DSTACK+1,x
 	inx
 	inx
+	jsr	checkoflow
 	rts
 
 ; BEGIN ( --- )
@@ -1656,6 +1738,7 @@ repeat:
 ; hide the word in the dict
 	defcode "hide", 0
 hide:
+	jsr	check1
 	lda	DSTACK-2,x
 	sta	TMP1
 	lda	DSTACK-1,x
@@ -1671,7 +1754,8 @@ hide:
 ; UNHIDE ( addr --- )
 ; unhide the word in the dict
 	defcode "unhide", 0
-unhide:	lda	DSTACK-2,x
+unhide:	jsr	check1
+	lda	DSTACK-2,x
 	sta	TMP1
 	lda	DSTACK-1,x
 	sta	TMP2
@@ -1704,31 +1788,6 @@ leftbr:
 ;
 ; CREATE (runtime):
 ; copies the address to the stack
-;
-; : xxx <BUILDS aaa DOES> bbb ; (compile time):
-; execute : = create1 a dictionary entry for xxx
-; execute <BUILDS = compile jsr builds1
-; compile aaa
-; execute DOES> = compile push address (bbb) to stack, compile jmp does1
-; compile bbb
-; compile rts
-;
-; xxx yyy (runtime):
-; executes builds1 = create a dict entry for yyy, compile push instance (yyy) addr to stack,
-;                    compile jsr branch, copy address to "BUILDS", compile dummy addr
-; executes aaa
-; push address (bbb) to stack
-; executes does1 = copy address from "BUILDS" to branch operand location
-;
-; yyy (runtime):
-; copies instance (yyy) address to the stack
-; branch to bbb
-; executes bbb
-; rts
-
-; In memory:
-; dict entry for xxx, jsr builds1, aaa, push bbb, jmp does1, bbb, rts
-; dict entry for yyy, push yyy, jsr branch, address of bbb 
 
 ; CREATE ( --- )
 ; create a new word
@@ -1810,14 +1869,42 @@ create2:
 	.byte	"no string",eol,0
 	jmp	abort
 
+; : xxx <BUILDS aaa DOES> bbb ; (compile time):
+; execute : = create1 a dictionary entry for xxx
+; execute <BUILDS = compile jsr builds1
+; compile aaa
+; execute DOES> = compile push address (bbb) to stack, compile jmp does1
+; compile bbb
+; compile rts
+;
+; xxx yyy (runtime):
+; executes builds1 = create a dict entry for yyy, compile push instance (yyy) addr to stack,
+;                    compile jsr branch, copy address to "BUILDS", compile dummy addr
+; executes aaa
+; push address (bbb) to stack
+; executes does1 = copy address from "BUILDS" to branch operand location
+;
+; yyy (runtime):
+; copies instance (yyy) address to the stack
+; branch to bbb
+; executes bbb
+; rts
+;
+; In memory:
+; dict entry for xxx, jsr builds1, aaa, push bbb, jmp does1, bbb, rts
+; dict entry for yyy, push yyy, jsr branch, address of bbb 
+
 ; <BUILDS ( --- )
 	defcode "<builds", FLAG_I
+	; compile time
 builds:
 	push	$20		; jsr builds1
 	jsr	ccomma
 	push	@builds1
 	jsr	comma
 	NEXT
+	; runtime
+	; jsr builds1
 @builds1:
 	jsr	create1		; create a dict entry
 	jsr	here		; address of branch operand = HERE + 10:
@@ -1842,7 +1929,6 @@ builds:
 	NEXT
 
 ; DOES> ( --- )
-; define the runtime action of word created by a high-level defining word
 	defcode "does>", FLAG_I
 	; compile time
 does:
@@ -1856,6 +1942,9 @@ does:
 	push	@does1
 	jsr	comma		; store address (does1)
 	NEXT
+	; runtime
+	; push here+8
+	; jmp does1
 @does1:
 	lda	BUILDS
 	sta     DSTACK,x
@@ -1869,14 +1958,16 @@ does:
 ; ALLOT ( n --- )
 ; allocate n bytes from the dictionary
 	defcode "allot", 0
-allot:	jsr	here
+allot:	jsr	check1
+	jsr	here
 	jsr	plusstore
 	NEXT
 
 ; , ( n --- )
 ; stores n to the dictionary
 	defcode ",", 0
-comma:	jsr	here
+comma:	jsr	check1
+	jsr	here
 	jsr	fetch
 	jsr	store
 	jsr	two
@@ -1886,7 +1977,8 @@ comma:	jsr	here
 ; C, ( n --- )
 ; store byte to the dictionary
 	defcode "c,", 0
-ccomma:	jsr	here
+ccomma:	jsr	check1
+	jsr	here
 	jsr	fetch
 	jsr	cstore
 	jsr	one
@@ -1924,7 +2016,8 @@ semicolon:
 ; addr = address to string
 ; n = number
 	defcode "number", 0
-number:	ldy	#0
+number:	
+	ldy	#0
 	sty	TMP1
 	sty	TMP2
 	lda	buffer+1,y	; check sign
@@ -2063,40 +2156,11 @@ query:
 	ldx	XSAVE
 	NEXT
 
-; QUERY
-; read input and fill input buffer
-;	defcode "query", 0
-;query:
-;	stx	XSAVE
-;	ldx	#0
-;	stx	CPTR
-;@query1:
-;	jsr	chrin
-;@query2:
-;	sta	buffer+1,x
-;	inx
-;	cpx	#$41		; check max length
-;	beq	@error1
-;	cmp	#eol
-;	bne	@query1
-;	dex
-;	stx	buffer
-;	ldx	XSAVE
-;	NEXT
-;
-;@error1:
-;	jsr	primm
-;	.byte	" ?", eol, 0
-;	lda	#eol
-;	sta	buffer+1
-;	ldx	XSAVE
-;	NEXT
-
 ; WORD ( delimiter --- string )
 ; get the next word from the input stream
 ; string = address of length byte, following string
 	defcode "word", 0
-word:	
+word:	jsr	check1
 	lda	DSTACK-2,x	; get delimiter
 	sta	TMP1
 	stx	XSAVE
@@ -2152,7 +2216,8 @@ word:
 ; addr = execution address of string (0 if not found)
 
 	defcode "find", 0
-find:	lda	DSTACK-2,x	; save string address
+find:	jsr	check1
+	lda	DSTACK-2,x	; save string address
 	sta	TMP1
 	lda	DSTACK-1,x
 	sta	TMP2
@@ -2236,6 +2301,7 @@ tick:	push	space		; delimiter
 	lda	DSTACK-2,x
 	ora	DSTACK-1,x
 	beq	@error2
+	jsr	checkoflow
 	NEXT
 @error1:
 	jsr	primm
@@ -2251,6 +2317,7 @@ tick:	push	space		; delimiter
 ; execute the word in addr
 	defcode "execute", 0
 execute:
+	jsr	check1
 	lda	DSTACK-2,x
 	sta	TMP1
 	lda	DSTACK-1,x
@@ -2273,6 +2340,7 @@ execute:
 
 	defcode "interpret", 0
 interpret:
+	jsr	checkoflow
 	lda	LOAD
 	bne	@interpret0
 	jsr	primm
@@ -2310,16 +2378,6 @@ interpret:
 	beq	@execute2	; branch if in interpreter mode
 	push	$20		; store jsr
 	jsr	ccomma
-	;lda	DSTACK-2,x	; HACK
-	;cmp	#<create	; this is needed to handle : xxx CREATE yyy correctly
-	;bne	@interpret2b
-	;lda	DSTACK-1,x
-	;cmp	#>create
-	;bne	@interpret2b
-	;lda	#<create1
-	;sta	DSTACK-2,x
-	;lda	#>create1
-	;sta	DSTACK-1,x	; end of HACK
 @interpret2b:
 	jsr	comma		; save address to dictionary
 	jmp	@interpret1
@@ -2361,8 +2419,8 @@ cold:	; tsx
 	sta	BASE
 	sty	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH ****",eol, eol
-        .byte               "    Coded by Juha Ollila",eol,eol,0
+	.byte	eol,lowcase,"    **** SturmFORTH v0.35 ****",eol, eol
+	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
 ; ABORT
