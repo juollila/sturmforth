@@ -260,7 +260,13 @@ pick:
 ; >R ( n --- )
 ; move the top entry of the stack to the return stack.
 	defcode ">r", 0
-tor:	jsr	check1
+tor:	;jsr	trace
+	;stx	XSAVE
+	;tsx
+	;txa
+	;jsr	printbyte
+	;ldx	XSAVE
+	jsr	check1
 	; save top item
 	lda	DSTACK-2,x
 	sta	TMP1
@@ -287,12 +293,24 @@ tor:	jsr	check1
 	txs
 	; x was modified so we have to load the correct value
 	ldx	XSAVE
+	;jsr	trace
+	;stx	XSAVE
+	;tsx
+	;txa
+	;jsr	printbyte
+	;ldx	XSAVE
 	NEXT
 
 ; R> ( --- n )
 ; move the top entry of the return stack to the stack.
 	defcode "r>", 0
 rfrom:
+	;jsr	trace
+	;stx	XSAVE
+	;tsx
+	;txa
+	;jsr	printbyte
+	;ldx	XSAVE
 	stx	XSAVE
 	; save an item from the return stack.
 	tsx
@@ -307,7 +325,7 @@ rfrom:
 	sta	$104,x
 	inx
 	inx
-	tsx
+	txs
 	; copy an item to the stack
 	ldx	XSAVE
 	lda	TMP1
@@ -318,6 +336,12 @@ rfrom:
 	inx
 	inx
 	jsr	checkoflow
+	;jsr	trace
+	;stx	XSAVE
+	;tsx
+	;txa
+	;jsr	printbyte
+	;ldx	XSAVE
 	NEXT
 
 ; R@ ( --- n )
@@ -2390,7 +2414,7 @@ interpret:
 @interpret3:
 	dex
 	dex
-	jsr	trace
+	;jsr	trace
 	jmp	interpret
 @error1:
 	jsr	primm
