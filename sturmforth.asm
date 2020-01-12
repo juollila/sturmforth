@@ -725,7 +725,21 @@ type:
 @type2:
 	jsr	twodrop
 	NEXT
-	
+
+; sign ( n --- )
+; print a sign of integer
+	defcode "sign", 0
+sign:
+	jsr	check1
+	lda	DSTACK-1,x
+	bpl	@sign1
+	lda	#'-'
+	jsr	chrout
+@sign1:
+	dex
+	dex
+	NEXT
+
 ;
 ; *** DISK I/O ***
 ;
@@ -1031,6 +1045,16 @@ var:
 	jsr	create
 	jsr	two
 	jsr	allot
+	NEXT
+
+; PAD ( --- )
+; return ptr to scrath pad area
+	defcode "pad", 0
+pad:
+	jsr	here
+	jsr	fetch
+	push	1024
+	jsr	plus
 	NEXT
 
 ;
