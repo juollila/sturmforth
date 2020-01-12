@@ -521,6 +521,13 @@ dot:	jsr	check1
 	jsr	printint
 	jmp	printspc
 
+; ? ( addr --- )
+; print value at addr
+	defcode "?", 0
+qmark:
+	jsr	fetch
+	jmp	dot
+
 ; u. ( n --- )
 ; print unsigned value of n
 	defcode "u.", 0
@@ -675,6 +682,49 @@ dotparen:
 	jsr	primm
 	.byte	"no string",eol,0
 	jmp	abort
+
+; count ( addr1 --- addr2 n )
+; addr1 is a ptr to a counted string
+; addr2 = addr1+1, n = count
+	defcode "count", 0
+count:
+	jsr	check1
+	ldy	#0		; get counted string addr
+	lda	DSTACK-2,x
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	lda	(TMP1),y	; save count
+	sta	DSTACK,x
+	sty	DSTACK+1,x	; high byte of n = 0
+	inc	DSTACK-2,x	; addr2 = addr1+1
+	bne	@count1
+	inc	DSTACK-1,x
+@count1:
+	inx			; adjust data stack ptr
+	inx
+	NEXT
+
+; type ( addr n --- )
+; print a string, addr = starting address, n = len of string
+	defcode "type", 0
+type:
+	jsr	check2
+	ldy	#0		; get string addr
+	lda	DSTACK-4,x
+	sta	TMP1
+	lda	DSTACK-3,x
+	sta	TMP2
+@type1:
+	dec	DSTACK-2,x
+	bmi	@type2
+	lda	(TMP1),y
+	iny
+	jsr	chrout
+	jmp	@type1
+@type2:
+	jsr	twodrop
+	NEXT
 	
 ;
 ; *** DISK I/O ***
