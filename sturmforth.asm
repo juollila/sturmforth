@@ -912,7 +912,35 @@ revcmove:
 @exit:
 	NEXT
 
-initcmove:			; routine used by cmove and <cmove
+; FILL ( addr n byte --- )
+; fill memory beginning at address with a sequence of n copies of byte.
+	defcode "fill", 0
+fill:
+	jsr	initcmove
+@memset1:
+	lda	TMP3
+	ora	TMP4
+	beq	@exit
+	lda	AUX
+	sta	(TMP1),y
+@memset2:
+	inc	TMP1
+	bne	@memset3
+	inc	TMP2
+@memset3:
+	dec	TMP3
+	lda	TMP3
+	cmp	#$ff
+	bne	@memset4
+	dec	TMP4
+@memset4:
+	sec
+	bcs	@memset1
+@exit:
+	rts
+
+; routine used by cmove, <cmove and fill
+initcmove:
 	lda	DSTACK-6,x
 	sta	TMP1
 	lda	DSTACK-5,x
@@ -933,6 +961,7 @@ initcmove:			; routine used by cmove and <cmove
 	dex
 	ldy	#0
 	rts
+
 
 ; CONSTANT ( n --- )
 ; create a constant, e.g. 0 constant nil
