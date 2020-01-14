@@ -1445,9 +1445,23 @@ dless:	jsr	check4
 	jmp	pushtrue
 
 
+; UM* (n1 n2 --- n1*n2 (32 bit)
+; uint 16 bit * uint 16 bit
+	defcode "um*", 0
+umul:	jsr	check2
+	jsr	mul16
+	lda	AUX
+	sta	DSTACK-4,x
+	lda	AUX+1
+	sta	DSTACK-3,x
+	lda	AUX+2
+	sta	DSTACK-2,x
+	lda	AUX+3
+	sta	DSTACK-1,x
+	NEXT
 
 ; M* ( n1 n2 --- n1*n2 (32 bit)
-; multiply
+; signed 16 bit int * signed 16 bit int = signed 32 bit int
 	defcode "m*", 0
 mmul:	jsr	check2
 	jsr	mulsign
