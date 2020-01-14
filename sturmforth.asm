@@ -1175,14 +1175,10 @@ negate:	jsr	check1
 	sta	DSTACK-1,x
 	NEXT
 
-
-; * ( n1 n2 --- n1*n2 )
-; multiply.
-	defcode "*", 0
-mul:	jsr	check2
+mulsign:
 	lda	DSTACK-3,x	; check sign of result
 	eor	DSTACK-1,x
-	php			; save sign
+	sta	SIGN		; save sign
 	; negate n1 if needed
 	lda	DSTACK-3,x
 	bpl	@mula
@@ -1191,8 +1187,16 @@ mul:	jsr	check2
 	jsr	swap
 	; negate n2 if needed
 @mula:	lda	DSTACK-1,x
-	bpl	@mul0
+	bpl	@mulb
 	jsr	negate
+@mulb:
+	rts
+
+; * ( n1 n2 --- n1*n2 )
+; multiply.
+	defcode "*", 0
+mul:	jsr	check2
+	jsr	mulsign
 @mul0:	lda	#0
 	sta	TMP1
 	sta	TMP2
@@ -1217,7 +1221,7 @@ mul:	jsr	check2
 	sta	DSTACK-4,x
 	lda	TMP2
 	sta	DSTACK-3,x
-	plp			; adjust sign if needed
+	lda	SIGN		; adjust sign if needed
 	bpl	@mul4
 	jsr	negate
 @mul4:
@@ -1367,7 +1371,7 @@ bitxor:	jsr	check2
 	jmp	drop
 
 ;
-; *** DOUBLE LENGTH ***
+; *** DOUBLE AND MIXED LENGTH ***
 ;
 
 ; D+ ( d1 d2 --- d1+d2 )
@@ -1399,7 +1403,27 @@ dplus:	jsr	check4
 	dex
 
 	NEXT
-	
+
+; DNEGATE (d --- d )
+; negate
+	defcode "dnegate", 0
+dnegate:
+	jsr	check2
+	lda	#0
+	sec
+	sbc	DSTACK-4,x
+	sta	DSTACK-4,x
+	lda	#0
+	sbc	DSTACK-3,x
+	sta	DSTACK-3,x
+	lda	#0
+	sbc	DSTACK-2,x
+	sta	DSTACK-2,x
+	lda	#0
+	sbc	DSTACK-1,x
+	sta	DSTACK-1,x
+	NEXT
+		
 ; D< ( d1 d2 --- flag )
 ; d1 < d2
 	defcode "d<", 0
@@ -1419,6 +1443,55 @@ dless:	jsr	check4
 	jmp	pushfalse
 @less2:	jsr	twodrop
 	jmp	pushtrue
+
+
+
+; M* ( n1 n2 --- n1*n2 (32 bit)
+; multiply
+	defcode "m*", 0
+mmul:	jsr	check2
+	jsr	mulsign
+	jsr	mul16
+	lda	AUX
+	sta	DSTACK-4,x
+	lda	AUX+1
+	sta	DSTACK-3,x
+	lda	AUX+2
+	sta	DSTACK-2,x
+	lda	AUX+3
+	sta	DSTACK-1,x
+	lda	SIGN
+	bpl	@mmul2
+	jsr	dnegate
+@mmul2:
+	NEXT
+
+
+; 16 bit uint * 16 bit uint = 32 bit uint
+mul16: 	lda	#$00
+	sta	AUX+2		; clear upper bits of product
+	sta	AUX+3 
+	ldy	#$10		; set binary count to 16 
+@shift_r:
+	lsr	DSTACK-3,x	; divide multiplier by 2 
+	ror	DSTACK-4,x
+	bcc	@rotate_r 
+	lda	AUX+2		; get upper half of product and add multiplicand
+	clc
+	adc	DSTACK-2,x
+	sta	AUX+2
+	lda	AUX+3 
+	adc	DSTACK-1,x
+@rotate_r:
+	ror			; rotate partial product 
+	sta	AUX+3 
+	ror	AUX+2
+	ror	AUX+1 
+	ror	AUX 
+	dey
+	bne	@shift_r 
+	rts
+
 ;
 ; *** COMPARISON ***
 ;
@@ -1856,7 +1929,18 @@ repeat:
 	jsr	swap		; stack: here, address of zbranch operand in while
 	jsr	store
 	NEXT
-	
+
+;
+; *** UTIL ***
+;
+
+; .S ( --- )
+; print the content of the stack
+	defcode ".s", 0
+prstack:
+	jsr	trace
+	NEXT
+
 ;
 ; *** COMPILER ***
 ;

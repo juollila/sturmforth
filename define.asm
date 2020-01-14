@@ -23,9 +23,10 @@
 
 ; other memory locations
 	buffer	= $200	; text buffer
-	BUILDS	= $2ee	; temporary storage for <BUILDS and DOES>
+	SIGN	= $2eb
+	AUX	= $2ec	; temporary register (4 bytes)
+	BUILDS	= $2f0	; temporary storage for <BUILDS and DOES>
 			; (return or data stack cannot be used)
-	AUX	= $2f0	; temporary register (2 bytes)
 	;SPSAVE	= $2f2	; for debugging purposes (exit to basic)
 	DEVICE	= $2f2
 	STATE	= $2f4	; compilation state
