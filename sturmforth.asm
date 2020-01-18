@@ -1445,7 +1445,7 @@ dless:	jsr	check4
 	jmp	pushtrue
 
 
-; UM* (n1 n2 --- n1*n2 (32 bit)
+; UM* (u1 u2 --- ud ) (n1*n2 32 bit)
 ; uint 16 bit * uint 16 bit
 	defcode "um*", 0
 umul:	jsr	check2
@@ -1506,6 +1506,101 @@ mul16: 	lda	#$00
 	bne	@shift_r 
 	rts
 
+
+; UM/MOD ( ud u1 --- u2 u3 )
+; ud = 32-bit uint dividend   -6 -5 -4 -3
+; u1 = 16-bit uint divisor    -2,-1
+; u2 = 16-bit uint remainder
+; u3 = 16-bit uint quotient
+;
+; See http://6502.org/source/integers/ummodfix/ummodfix.htm
+
+	defcode "um/mod", 0
+ummod:
+	jsr	check3
+	sec			; detech overflow or /0 condition
+	lda	DSTACK-4,x	; divisor must be more than high cell of dividend
+	sbc	DSTACK-2,x
+	lda	DSTACK-3,x
+	sbc	DSTACK-1,x
+	bcs	@oflow
+	ldy	#17		; loop counter = 17
+@loop:
+	rol	DSTACK-6,x	; rotate low cell of dividend
+	rol	DSTACK-5,x
+	dey
+	beq	@end
+	rol	DSTACK-4,x	; rotate high cell of dividend
+	rol	DSTACK-3,x
+	lda	#0
+	sta	AUX		; clear carry, AUX = carry
+	rol	AUX		; save carry
+	sec			; check if divisor will fit into high 17 bits of dividend
+	lda	DSTACK-4,x
+	sbc	DSTACK-2,x
+	sta	TMP1		; save difference low byte temporarily
+	lda	DSTACK-3,x
+	sbc	DSTACK-1,x
+	sta	TMP2		; save difference high byte temporarily
+	lda	AUX		; load carry (17th bit)
+	sbc	#0		; complete subtraction
+	bcc	@loop
+	lda	TMP1		; divisor fits so update high cell of dividend
+	sta	DSTACK-4,x
+	lda	TMP2
+	sta	DSTACK-3,x
+	jmp	@loop
+@oflow:
+	lda	#$ff
+	sta	DSTACK-6,x
+	sta	DSTACK-5,x
+	sta	DSTACK-4,x
+	sta	DSTACK-3,x
+@end:	dex
+	dex
+	jsr	swap
+	NEXT
+
+; m/ (d1 n1 --- n2 )
+; 32 bit int / 16 bit int
+	defcode "m/", 0
+mdiv:
+	jsr	check3
+	lda	DSTACK-3,x	; determine sign of result
+	eor	DSTACK-1,x
+	sta	SIGN
+	lda	DSTACK-1,x	; negate n1 if its negative
+	bpl	@mdiv1
+	jsr	negate
+@mdiv1:
+	lda	DSTACK-3,x	; negate d1 if its negative
+	bpl	@mdiv2
+	jsr	rot		; d1h n1 d1l
+	jsr	rot		; n1 d1l d1h
+	jsr	dnegate
+	jsr	rot
+@mdiv2:
+	jsr	ummod		; remainder quotient
+	jsr	swap		; quotient remainder
+	jsr	drop		; quotient
+	lda	SIGN
+	bpl	@mdiv3
+	jsr	negate
+@mdiv3:	NEXT
+	
+
+; */	( n1 n2 n3 --- n )
+; n = n1 * n2 / n3, intermediate n1*n2 is 32-bit value
+	defcode "*/", 0
+muldiv:
+	jsr	check3
+	jsr	rot		; n2 n3 n1
+	jsr	rot		; n3 n1 n2
+	jsr	mmul		; n3 n1*n2
+	jsr	rot		; n1*n2 n3
+	jsr	mdiv
+	NEXT
+	
 ;
 ; *** COMPARISON ***
 ;
