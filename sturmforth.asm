@@ -1565,6 +1565,19 @@ ummod:
 ; 32 bit int / 16 bit int
 	defcode "m/", 0
 mdiv:
+	jsr	mdivmod
+	jsr	swap
+	jsr	drop
+	NEXT
+	
+
+; m/mod (d1 n1 --- n2 n3
+; d1 = 32 bit int
+; n1 = 16 bit int
+; n2 = remainder, 16 bit int
+; n3 = quotient, 16 bit int
+	defcode "m/mod", 0
+mdivmod:
 	jsr	check3
 	lda	DSTACK-3,x	; determine sign of result
 	eor	DSTACK-1,x
@@ -1581,13 +1594,14 @@ mdiv:
 	jsr	rot
 @mdiv2:
 	jsr	ummod		; remainder quotient
-	jsr	swap		; quotient remainder
-	jsr	drop		; quotient
 	lda	SIGN
 	bpl	@mdiv3
 	jsr	negate
+	jsr	swap
+	jsr	negate
+	jsr	swap
 @mdiv3:	NEXT
-	
+
 
 ; */	( n1 n2 n3 --- n )
 ; n = n1 * n2 / n3, intermediate n1*n2 is 32-bit value
@@ -1600,6 +1614,20 @@ muldiv:
 	jsr	rot		; n1*n2 n3
 	jsr	mdiv
 	NEXT
+
+; */mod ( n1 n2 n3 --- n4 n5
+; intermediate n1*n2 is 32-bit value
+; n4 = remainder
+; n5 = quotient
+	defcode "*/mod", 0
+muldivmod:
+	jsr	rot		; n2 n3 n1
+	jsr	rot		; n3 n1 n2
+	jsr	mmul		; n3 n1*n2
+	jsr	rot		; n1*n2 n3
+	jsr	mdivmod
+	NEXT
+
 	
 ;
 ; *** COMPARISON ***
