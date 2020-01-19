@@ -2925,7 +2925,7 @@ cold:	; tsx
 	sta	BASE
 	sty	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.35 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.47 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
