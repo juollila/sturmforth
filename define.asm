@@ -22,12 +22,14 @@
 	MAXSTACK = $6f
 
 ; other memory locations
+	nbuffer	= $110	; number string buffer
 	buffer	= $200	; text buffer
+	NUMLEN	= $2e8
+	NUMPTR	= $2e9
 	SIGN	= $2eb
 	AUX	= $2ec	; temporary register (4 bytes)
 	BUILDS	= $2f0	; temporary storage for <BUILDS and DOES>
 			; (return or data stack cannot be used)
-	;SPSAVE	= $2f2	; for debugging purposes (exit to basic)
 	DEVICE	= $2f2
 	STATE	= $2f4	; compilation state
 	HEREPTR	= $2f6	; data space pointer

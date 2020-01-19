@@ -728,16 +728,122 @@ type:
 
 ; sign ( n --- )
 ; print a sign of integer
+;	defcode "sign", 0
+;sign:
+;	jsr	check1
+;	lda	DSTACK-1,x
+;	bpl	@sign1
+;	lda	#'-'
+;	jsr	chrout
+;@sign1:
+;	dex
+;	dex
+;	NEXT
+
+;
+; *** NUMBER CONVERSION ***
+;
+
+; <# ( ud --- ud )
+; initialize number conversion
+	defcode "<#", 0
+bracknum:
+	jsr	check2
+	lda	#0
+	sta	NUMLEN
+	lda	#<nbuffer
+	sta	NUMPTR
+	lda	#>nbuffer
+	sta	NUMPTR+1
+	NEXT
+
+; sign ( n --- )
+; add sign to the number string.
 	defcode "sign", 0
 sign:
 	jsr	check1
 	lda	DSTACK-1,x
-	bpl	@sign1
+	bpl	@sign2
 	lda	#'-'
-	jsr	chrout
+	ldy	NUMPTR
+	sty	TMP1
+	ldy	NUMPTR+1
+	sty	TMP2
+	ldy	#0
+	sta	(TMP1),y
+	dec	NUMPTR		; numstring ptr -= 1
+	bpl	@sign1
+	dec	NUMPTR+1
 @sign1:
+	inc	NUMLEN		; numstring len += 1
+@sign2:
 	dex
 	dex
+	NEXT
+
+; # ( ud1 --- ud2 )
+; divide ud1 by BASE. add the remainder to the number string.
+	defcode "#", 0
+numsign:
+	jsr	check2
+	jsr	base
+	jsr	fetch		; u1 base
+	jsr	ummod32		; n1 ud1l ud1h
+	jsr	rot		; ud1l ud1h n1
+	clc			; convert digit to char
+	lda	DSTACK-2,x
+	adc	#'0'
+	cmp	#':'
+	bcc	@numsign2
+	clc
+	adc	#7		; 'a'-':'
+@numsign2:
+	ldy	NUMPTR		; store char to numstring
+	sty	TMP1
+	ldy	NUMPTR+1
+	sty	TMP2
+	ldy	#0
+	sta	(TMP1),y
+	dec	NUMPTR		; numstring ptr -= 1
+	bpl	@numsign3
+	dec	NUMPTR+1
+@numsign3:
+	inc	NUMLEN		; numstring len += 1
+	dex			; remove quotient+'0' from stack
+	dex
+	NEXT
+
+; #S ( ud1 --- ud2 )
+; convert number ud1 to the number string.
+	defcode "#s", 0
+nums:	jsr	check2
+@nums1:
+	jsr	numsign
+	lda	DSTACK-4,x
+	ora	DSTACK-3,x
+	ora	DSTACK-2,x
+	ora	DSTACK-1,x
+	bne	@nums1
+	NEXT	
+
+; #> ( ud --- addr n )
+; end number conversion
+; addr = address of string
+; n = number of chars
+	defcode "#>", 0
+numbrack:
+	jsr	check2
+	clc			; store numptr+1 to stack
+	lda	NUMPTR
+	adc	#1
+	sta	DSTACK-4,x
+	lda	NUMPTR+1
+	adc	#0
+	sta	DSTACK-3,x
+	lda	NUMLEN		; store length of string to stack
+	sta	DSTACK-2,x
+	lda	#0
+	sta	DSTACK-1,x
 	NEXT
 
 ;
@@ -1628,6 +1734,58 @@ muldivmod:
 	jsr	mdivmod
 	NEXT
 
+; ( ud1 n1 --- n2 ud2 )
+; 32 bit divmod
+; ud1 = dividend (unsigned 32 bit int)
+; n1 = divisor (BASE)
+; n2 = remainder (16 bit)
+; ud2 = quotient (unsigned 32 bit int)
+;
+; This routine is used by number conversion routines
+	defcode	"/ummod32", 0
+ummod32:
+	jsr	check3
+@div0:
+	lda 	#0		; set remainder to 0
+	sta	TMP1
+	sta 	TMP2
+	ldy	#$20		; number of bits
+@div1:
+	asl	DSTACK-6,x
+	rol	DSTACK-5,x
+	rol	DSTACK-4,x
+	rol	DSTACK-3,x
+	rol	TMP1
+	rol	TMP2
+	lda	#0		; set carry
+	sta	TMP3
+	rol	TMP3
+	lda	TMP1		; subtract divisor to see if it fits in
+	sec
+	sbc	DSTACK-2,x
+	sta	AUX
+	lda	TMP2
+	sbc	DSTACK-1,x
+	sta	AUX+1
+	lda	TMP3		; carry
+	sbc	#0
+	bcc	@div2		; if carry=0 then divisor did not fit in yet
+	lda	AUX		; else save sub result as remainder
+	sta	TMP1
+	lda	AUX+1
+	sta	TMP2
+	inc	DSTACK-6,x
+@div2:
+	dey
+	bne	@div1	
+@div3:
+	lda	TMP1		; save remainder
+	sta	DSTACK-2,x
+	lda	TMP2
+	sta	DSTACK-1,x	; ud2l ud2h n2
+	jsr	rot		; ud2h n2 ud2l
+	jsr	rot		; n2 ud2l ud2h
+	NEXT
 	
 ;
 ; *** COMPARISON ***
