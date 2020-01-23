@@ -794,10 +794,10 @@ numsign:
 	lda	DSTACK-2,x
 	adc	#'0'
 	cmp	#':'
-	bcc	@numsign2
+	bcc	numsign2
 	clc
 	adc	#7		; 'a'-':'
-@numsign2:
+numsign2:
 	ldy	NUMPTR		; store char to numstring
 	sty	TMP1
 	ldy	NUMPTR+1
@@ -825,6 +825,14 @@ nums:	jsr	check2
 	ora	DSTACK-1,x
 	bne	@nums1
 	NEXT	
+
+; HOLD ( char --- )
+; char is inserted into the number string.
+	defcode "hold", 0
+hold:
+	jsr	check1
+	lda	DSTACK-2,x
+	jmp	numsign2
 
 ; #> ( ud --- addr n )
 ; end number conversion
@@ -2257,6 +2265,20 @@ hide:
 	dex
 	NEXT
 
+; IMMEDIATE ( --- )
+; marks the most recently created dictionary entry as an immediate word
+	defcode "immediate", 0
+immediate:
+	lda	LASTPTR		; save address of the head of list
+	sta	TMP1
+	lda	LASTPTR+1
+	sta	TMP2
+	ldy	#2
+	lda	(TMP1),y
+	ora	#FLAG_I
+	sta	(TMP1),y
+	NEXT
+
 ; UNHIDE ( addr --- )
 ; unhide the word in the dict
 	defcode "unhide", 0
@@ -2513,7 +2535,18 @@ semicolon:
 	jsr	fetch
 	jsr	unhide
 	jsr	leftbr
-	NEXT			; EXIT	
+	NEXT			; EXIT
+
+; [COMPILE] ( --- )
+; enforces compilation of the next word
+	defcode "[compile]", FLAG_I
+brackcompile:
+	push	$20		; store jsr
+	jsr	ccomma
+	jsr	tick		; store address
+	jsr	comma
+	NEXT
+
 ;
 ; *** INTERPRETER ***
 ;
