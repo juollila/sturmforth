@@ -2547,6 +2547,57 @@ brackcompile:
 	jsr	comma
 	NEXT
 
+; FORGET ( --- )
+; removes a word and the following words from the dictionary.
+	defcode "forget", 0
+forget:
+	push	space		; delimiter
+	jsr	word		; get the next word
+	lda	DSTACK-2,x	; check if a word was found
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	ldy	#0
+	lda	(TMP1),y
+	beq	@error1		; branch if string length = 0
+	jsr	find0
+	lda	DSTACK-2,x
+	ora	DSTACK-1,x
+	beq	@error2
+	jsr	dup		; stack: addr addr
+	push	dictstart	; stack: addr addr dicstart
+	jsr	less		; stack: addr flag
+	lda	DSTACK-2,x
+	bne	@error3
+	dex			; stack: addr
+	dex
+	jsr	dup		; stack: addr addr
+	jsr	trace
+	jsr	fetch		; stack: addr prev_word_addr
+	jsr	trace
+	jsr	last		; stack: addr prev_word_addr lastptr_addr
+	jsr	trace
+	jsr	store		; stack: addr
+	jsr	trace
+	jsr	here		; stack: addr hereptr_addr
+	jsr	trace
+	jsr	store		; stack: -
+	jsr	trace
+	NEXT
+@error1:
+	jsr	primm
+	.byte	"no word",eol,0
+	jmp	abort
+@error2:
+	jsr	primm
+	.byte	"undefined word",eol,0
+	jmp	abort
+@error3:
+	jsr	primm
+	.byte	"protected word", eol, 0
+	jmp	abort
+
+	 
 ;
 ; *** INTERPRETER ***
 ;
@@ -2752,10 +2803,36 @@ word:	jsr	check1
 ; FIND ( string --- addr )
 ; find the word from the dictionary
 ; string = address of length byte, following string
-; addr = execution address of string (0 if not found)
+; addr = execution address of word (0 if not found)
 
 	defcode "find", 0
 find:	jsr	check1
+	jsr	find0
+	lda	DSTACK-2,x
+	ora	DSTACK-1,x
+	beq	@find1		; branch if the word was not found
+	lda	DSTACK-2,x
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	ldy	#2
+	lda	(TMP1),y
+	and	#$0f
+	clc
+	adc	#3
+	adc	DSTACK-2,x
+	sta	DSTACK-2,x
+	lda	DSTACK-1,x
+	adc	#0
+	sta	DSTACK-1,x
+@find1:
+	NEXT
+
+; find0 a word from the dictionary
+; string = address of length byte, following string
+; addr = address of word (0 if not found)
+
+find0:
 	lda	DSTACK-2,x	; save string address
 	sta	TMP1
 	lda	DSTACK-1,x
@@ -2791,15 +2868,9 @@ find:	jsr	check1
 	dec	AUX
 	bne	@find2		; branch if not last char
 	; match was found
-	clc
-	lda	AUX+1
-	adc	#3
-	sta	AUX+1
 	lda	TMP3
-	adc	AUX+1
 	sta	DSTACK-2,x
 	lda	TMP4
-	adc	#0
 	sta	DSTACK-1,x
 	NEXT	
 @find4:
@@ -2819,7 +2890,7 @@ find:	jsr	check1
 	sta	DSTACK-2,x
 	sta	DSTACK-1,x
 	NEXT
-
+	
 ; ' ( --- addr )
 ; get the next word from the input stream
 ; returns execution address of word in the data stack.
