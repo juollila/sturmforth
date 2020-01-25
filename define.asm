@@ -24,6 +24,7 @@
 ; other memory locations
 	nbuffer	= $110	; number string buffer
 	buffer	= $200	; text buffer
+	DUMPTMP	= $2e7
 	NUMLEN	= $2e8
 	NUMPTR	= $2e9
 	SIGN	= $2eb

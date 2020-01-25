@@ -2268,6 +2268,49 @@ words:
 	dex
 	dex
 	NEXT
+
+; DUMP ( addr n --- )
+; dump memory starting from addr
+	defcode "dump", 0
+dump:
+	jsr	check2
+	jsr	over		; addr n addr
+	jsr	plus		; addr addr+n
+	jsr	swap		; addr+n addr
+@dump1:
+	jsr	printcr
+	sec
+	lda	DSTACK-4,x
+	sbc	DSTACK-2,x
+	lda	DSTACK-3,x
+	sbc	DSTACK-1,x
+	bcc	@dump3
+	lda	#7
+	sta	DUMPTMP
+	jsr	dup		; addr+n addr addr
+	jsr	udot		; addr+n addr
+@dump2:
+	jsr	dup		; addr+n addr addr
+	jsr	cfetch		; addr+n addr n
+	jsr	udot		; addr+n addr
+	jsr	oneplus		; addr+n addr+1
+;	jsr	printspc
+	dec	DUMPTMP
+	bpl	@dump2
+	bmi	@dump1
+@dump3:
+	dex
+	dex
+	dex
+	dex
+	NEXT
+
+;	jsr	dup		; addr n addr addr
+;	jsr	dot		; addr n addr
+;	jsr	printspc
+;	jsr	oneplus		; addr n addr+1
+
+	
 ;
 ; *** SYSTEM ***
 ;
