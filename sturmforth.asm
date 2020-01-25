@@ -74,10 +74,14 @@ checkoflow:
 	jsr	primm
 	.byte   "stack overflow",eol,0
 	jmp	abort
+check6:
+	cpx	#12
+	bcc	stackunderflow
+	rts			; return from subs can be omitted for size optimization
 check4:
 	cpx	#8
 	bcc	stackunderflow
-	rts			; return from subs can be omitted for size optimization
+	rts
 check3:
 	cpx	#6
 	bcc	stackunderflow
@@ -112,17 +116,6 @@ stackunderflow:
 	defcode	"drop", 0
 drop:
 	jsr	check1
-	dex
-	dex
-	NEXT
-
-; 2DROP ( n n --- )
-; remove top two entries from the stack.
-	defcode "2drop", 0
-twodrop:
-	jsr	check2
-	dex
-	dex
 	dex
 	dex
 	NEXT
@@ -403,6 +396,94 @@ two:	lda	#2
 	NEXT
 
 ;
+; DOUBLE NUMBER STACK MANIPULATION
+;
+
+; 2DROP ( d --- )
+; remove double number (or two items) from the stack.
+	defcode "2drop", 0
+twodrop:
+	jsr	check2
+	dex
+	dex
+	dex
+	dex
+	NEXT
+
+; 2DUP ( d --- d d )
+;      ( n1 n2 --- n1 n2 n1 n2 )
+; duplicate the top double number on the stack.
+	defcode	"2dup", 0
+twodup:
+	jsr	check2
+	jsr	over
+	jsr	over
+	jsr	checkoflow
+	NEXT
+
+; 2OVER ( d1 d2 --- d1 d2 d1 )
+;       ( n1 n2 n3 n4 --- n1 n2 n3 n4 n1 n2
+; duplicate the second double number on the stack.
+	defcode "2over", 0
+twoover:
+	jsr	check4
+	jsr	tor		; d1
+	jsr	tor
+	jsr	twodup		; d1 d1
+	jsr	rfrom		; d1 d1 d2
+	jsr	rfrom
+	jsr	twoswap		; d1 d2 d1
+	jsr	checkoflow
+	NEXT
+
+; 2ROT ( d1 d2 d3 --- d2 d3 d1 )
+;      ( n1 n2 n3 n4 n5 n6 --- n3 n4 n5 n6 n1 n2 )
+; rotate the third double number to the top of the stack.
+	defcode	"2rot", 0
+tworot:	jsr	check6
+	jsr	tor		; d1 d2
+	jsr	tor
+	jsr	twoswap		; d2 d1
+	jsr	rfrom		; d2 d1 d3
+	jsr	rfrom
+	jsr	twoswap		; d2 d3 d1
+	NEXT
+
+; 2SWAP ( d1 d2 --- d2 d1 )
+;       ( n1 n2 n3 n4 --- n3 n4 n1 n2
+; swap the first and the second double number on the stack.
+	defcode "2swap", 0
+twoswap:
+	jsr	check4
+	; save d1
+	lda	DSTACK-8,x
+	pha
+	lda	DSTACK-7,x
+	pha
+	lda	DSTACK-6,x
+	pha
+	lda	DSTACK-5,x
+	pha
+	; d1 = d2
+	lda	DSTACK-4,x
+	sta	DSTACK-8,x
+	lda	DSTACK-3,x
+	sta	DSTACK-7,x
+	lda	DSTACK-2,x
+	sta	DSTACK-6,x
+	lda	DSTACK-1,x
+	sta	DSTACK-5,x
+	; d2 = saved d1
+	pla
+	sta	DSTACK-1,x
+	pla
+	sta	DSTACK-2,x
+	pla
+	sta	DSTACK-3,x
+	pla
+	sta	DSTACK-4,x
+	NEXT
+
 ; *** LITERAL ***
 ;
 
