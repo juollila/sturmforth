@@ -2245,6 +2245,66 @@ prstack:
 	NEXT
 
 ;
+; *** SYSTEM ***
+;
+
+; SYS ( <flag> n1 n2 n3 addr --- <flag> n4 n5 n6 )
+; call machine code routine
+; flag = carry flag
+; n1 = a
+; n2 = x
+; n3 = y
+; addr = address of routine to be called
+; n4 = a
+; n5 = x
+; n6 = y
+	defcode "sys", 0
+sys:
+	jsr	check4		; carryflag is optional
+	stx	XSAVE		; save data stack pointer
+	lda	#>(@sys4-1)	; push return address
+	pha
+	lda	#<(@sys4-1)
+	pha
+	sec			; push sys address
+	lda	DSTACK-2,x
+	sbc	#1
+	tay
+	lda	DSTACK-1,x
+	sbc	#0
+	pha
+	tya
+	pha
+	lda	DSTACK-8,x	; push a
+	pha
+	lda	DSTACK-6,x	; push x
+	pha
+	lda	DSTACK-4,x	; set y
+	tay
+	lda	DSTACK-10,x	; set carry if needed
+	beq	@sys2
+	sec
+	bcs	@sys3
+@sys2:	clc
+@sys3:	pla			; set x
+	tax
+	pla			; set a
+	rts			; SYS!!!
+@sys4:	pha			; save a, x
+	txa
+	pha
+	ldx	XSAVE		; restore data stack pointer
+	sty	DSTACK-4,x	; copy y, x, a to the data stack
+	pla
+	sta	DSTACK-6,x
+	pla
+	sta	DSTACK-8,x
+	dex			; remove address from the data stack
+	dex
+	NEXT
+	
+	
+;
 ; *** COMPILER ***
 ;
 
