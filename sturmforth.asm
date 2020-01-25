@@ -2244,6 +2244,30 @@ prstack:
 	jsr	trace
 	NEXT
 
+; WORDS ( --- )
+; print words in the dictionary
+	defcode "words", 0
+words:
+	jsr	last
+@words1:
+	jsr	fetch
+	lda	DSTACK-2,x
+	ora	DSTACK-1,x
+	beq	@words2
+	jsr	dup
+	push	2
+	jsr	plus
+	jsr	count
+	lda	DSTACK-2,x
+	and	#FLAG_M
+	sta	DSTACK-2,x
+	jsr	type
+	jsr	printspc
+	jmp	@words1
+@words2:
+	dex
+	dex
+	NEXT
 ;
 ; *** SYSTEM ***
 ;
