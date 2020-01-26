@@ -1253,6 +1253,59 @@ pad:
 	NEXT
 
 ;
+; MEMORY DOUBLE NUMBER
+;
+
+; 2! ( d addr --- )
+; store double number
+	defcode "2!", 0
+twostore:
+	jsr	check3
+	jsr	two		; n1 n2 addr 2
+	jsr	pick		; n1 n2 addr n1
+	jsr	over		; n1 n2 addr n1 addr
+	jsr	store		; n1 n2 addr
+	jsr	twoplus		; n1 n2 addr+2
+	jsr	store		; n1
+	jsr	drop
+	NEXT
+
+; 2@ ( addr --- d )
+; fetch double number
+	defcode "2@", 0
+twofetch:
+	jsr	check1
+	jsr	dup		; addr addr
+	jsr	fetch		; addr n1
+	jsr	swap		; n1 addr
+	jsr	twoplus		; n1 addr+2
+	jsr	fetch		; n1 n2
+	NEXT
+
+; 2CONSTANT ( d --- )
+; create a double number constant
+	defcode "2constant", 0
+twoconstant:
+	jsr	check2
+	jsr	create1
+	jsr	swap		; n2 n1
+	jsr	literal		; n2
+	jsr	literal		;
+	push	$60		; rts
+	jsr	ccomma
+	NEXT
+
+; 2VARIABLE ( --- )
+; create a double number variable, e.g. variable var
+	defcode "2variable", 0
+twovar:
+	jsr	create
+	push	4
+	jsr	allot
+	NEXT
+
+
+;
 ; *** ARITHMETIC ***
 ;
 
@@ -2886,11 +2939,25 @@ number:
 @number2:
 	NEXT
 @error1:
-	pla
-	dex	; discard *10
-	dex
-	dex	; discard address
-	dex
+	;pla
+	;dex	; discard *10
+	;dex
+	;dex	; discard address
+	;dex
+	;jsr	space
+	;lda	#<buffer
+	;sta	DSTACK,x
+	;lda	#>buffer
+	;sta	DSTACK+1,x
+	;inx
+	;inx
+	lda	LOAD
+	beq	@skip1
+	push	$200
+	jsr	count
+	jsr	type
+	jsr	printspc
+@skip1:
 	jsr	primm
 	.byte	"undefined word", eol, 0
 	jmp	abort
@@ -3237,7 +3304,7 @@ cold:	; tsx
 	sta	BASE
 	sty	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.47 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.54 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
