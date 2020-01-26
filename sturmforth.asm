@@ -609,7 +609,7 @@ qmark:
 	jsr	fetch
 	jmp	dot
 
-; u. ( n --- )
+; U. ( n --- )
 ; print unsigned value of n
 	defcode "u.", 0
 udot:	jsr	check1
@@ -627,6 +627,20 @@ udot:	jsr	check1
 @udot1:	pla
 	jsr	printuint
 	jmp	printspc
+
+; D. ( d --- )
+; print double number
+	defcode "d.", 0
+ddot:
+	jsr	check2
+	jsr	dup
+	jsr	bracknum
+	jsr	sign
+	jsr	nums
+	jsr	numbrack
+	jsr	type
+	jsr	printspc
+	NEXT
 
 ; KEY ( --- n )
 ; read a key from the keyboard
@@ -1619,7 +1633,7 @@ bitxor:	jsr	check2
 	jmp	drop
 
 ;
-; *** DOUBLE AND MIXED LENGTH ***
+; *** DOUBLE AND MIXED LENGTH ARITHMETIC ***
 ;
 
 ; D+ ( d1 d2 --- d1+d2 )
@@ -1645,12 +1659,44 @@ dplus:	jsr	check4
 	adc	DSTACK-1,x
 	sta	DSTACK-5,x
 
-	dex			; pop two items
-	dex
-	dex
-	dex
+	jsr	twodrop		; pop two items
 
 	NEXT
+
+; D- ( d1 d2 --- d1-d2 )
+; subtract
+	defcode "d-", 0
+dminus:	jsr	check4
+	sec
+	lda	DSTACK-8,x	; sub low int
+	sbc	DSTACK-4,x
+	sta	DSTACK-8,x
+	lda	DSTACK-7,x
+	sbc	DSTACK-3,x
+	sta	DSTACK-7,x
+
+	lda	DSTACK-6,x	; sub high int
+	sbc	DSTACK-2,x
+	sta	DSTACK-6,x
+	lda	DSTACK-5,x
+	sbc	DSTACK-1,x
+	sta	DSTACK-5,x
+
+	jsr	twodrop		; pop two items
+
+	NEXT
+
+; DABS ( d --- |d| )
+; absolute value of double number.
+	defcode "dabs", 0
+dabs:	jsr	check2
+	jsr	dup
+	jsr	zeroless
+	lda	DSTACK-2,x
+	beq	@abs1
+	jsr	drop
+	jmp	dnegate
+@abs1:	jmp	drop
 
 ; DNEGATE (d --- d )
 ; negate
@@ -3304,7 +3350,7 @@ cold:	; tsx
 	sta	BASE
 	sty	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.54 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.55 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
