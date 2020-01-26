@@ -633,10 +633,13 @@ udot:	jsr	check1
 	defcode "d.", 0
 ddot:
 	jsr	check2
-	jsr	dup
+	jsr	swap		; n2 n1
+	jsr	over		; n2 n1 n2
+	jsr	dabs
 	jsr	bracknum
+	jsr	nums		; n2 0 0
+	jsr	rot		; 0 0 n2
 	jsr	sign
-	jsr	nums
 	jsr	numbrack
 	jsr	type
 	jsr	printspc
@@ -2961,17 +2964,17 @@ forget:
 	dex			; stack: addr
 	dex
 	jsr	dup		; stack: addr addr
-	jsr	trace
+	;jsr	trace
 	jsr	fetch		; stack: addr prev_word_addr
-	jsr	trace
+	;jsr	trace
 	jsr	last		; stack: addr prev_word_addr lastptr_addr
-	jsr	trace
+	;jsr	trace
 	jsr	store		; stack: addr
-	jsr	trace
+	;jsr	trace
 	jsr	here		; stack: addr hereptr_addr
-	jsr	trace
+	;jsr	trace
 	jsr	store		; stack: -
-	jsr	trace
+	;jsr	trace
 	NEXT
 @error1:
 	jsr	primm
@@ -2991,37 +2994,40 @@ forget:
 ; *** INTERPRETER ***
 ;
 
-; NUMBER ( addr --- n )
+; NUMBER ( addr --- n/d )
 ; addr = address to string
-; n = number
+; n/d = 16-bit or 32-bit number
 	defcode "number", 0
 number:	
+	;jsr	trace
 	ldy	#0
-	sty	TMP1
-	sty	TMP2
-	lda	buffer+1,y	; check sign
+	lda	DSTACK-2,x	; save addr
+	sta	TMP1
+	lda	DSTACK-1,x
+	sta	TMP2
+	lda	(TMP1),y	; save length
+	sta	TMP3
+	inc	TMP3
+	sty	DSTACK-2,x	; save 0 0
+	sty	DSTACK-1,x
+	sty	DSTACK,x
+	sty	DSTACK+1,x
+	inx
+	inx
+	iny
+	lda	(TMP1),y	; check sign
 	cmp	#'-'
 	php
 	bne	@number1
 	iny
 @number1:
+	lda	(TMP1),y
+	cmp	#'.'
+	beq	@ddigit
 	; * base
-	lda	TMP1
-	sta	DSTACK,x
-	inx
-	lda	TMP2
-	sta	DSTACK,x
-	inx
-	;lda	#10
-	lda	BASE
-	sta	DSTACK,x
-	inx
-	lda	#0
-	sta	DSTACK,x
-	inx
-	jsr	mul
+	jsr	@mulbase
 	; + digit
-	lda	buffer+1,y
+	lda	(TMP1),y
 	cmp	#'0'
 	bcc	@error1
 	cmp	#'g'
@@ -3045,40 +3051,102 @@ number:
 	lda	#0
 	sta	DSTACK,x
 	inx
-	jsr	plus
-	; TMP = TMP * 10 + digit
-	lda	DSTACK-2,x
-	sta	TMP1
-	lda	DSTACK-1,x
-	sta	TMP2
+	sta	DSTACK,x
+	inx
+	sta	DSTACK,x
+	inx
+	; d1 = d1 * base + digit
+	jsr	dplus
 	iny
-	dex
-	dex
-	tya
-	cmp	buffer
+	cpy	TMP3
 	bne	@number1
-	lda	TMP1
-	sta	DSTACK-2,x
-	lda	TMP2
-	sta	DSTACK-1,x
+	dex			; remove high 16 bits
+	dex
 	plp
 	bne	@number2
 	jsr	negate
+
+;number:	
+;	ldy	#0
+;	sty	TMP1
+;	sty	TMP2
+;	lda	buffer+1,y	; check sign
+;	cmp	#'-'
+;	php
+;	bne	@number1
+;	iny
+;@number1:
+	; * base
+;	lda	TMP1
+;	sta	DSTACK,x
+;	inx
+;	lda	TMP2
+;	sta	DSTACK,x
+;	inx
+	;lda	#10
+;	lda	BASE
+;	sta	DSTACK,x
+;	inx
+;	lda	#0
+;	sta	DSTACK,x
+;	inx
+;	jsr	mul
+	; + digit
+;	lda	buffer+1,y
+;	cmp	#'0'
+;	bcc	@error1
+;	cmp	#'g'
+;	bcs	@error1
+;	cmp	#':'
+;	bcc	@dec
+;	cmp	#'a'
+;	bcc	@error1
+;	sec
+;	sbc	#7		; 'a' - ':'
+;	pha
+;	lda	BASE		; check that we are in hex base
+;	cmp	#16
+;	bne	@error1
+;	pla
+;@dec:
+;	sec	
+;	sbc	#'0'
+;	sta	DSTACK,x
+;	inx
+;	lda	#0
+;	sta	DSTACK,x
+;	inx
+;	jsr	plus
+	; TMP = TMP * 10 + digit
+;	lda	DSTACK-2,x
+;	sta	TMP1
+;	lda	DSTACK-1,x
+;	sta	TMP2
+;	iny
+;	dex
+;	dex
+;	tya
+;	cmp	buffer
+;	bne	@number1
+;	lda	TMP1
+;	sta	DSTACK-2,x
+;	lda	TMP2
+;	sta	DSTACK-1,x
+;	plp
+;	bne	@number2
+;	jsr	negate
 @number2:
 	NEXT
+@ddigit:
+	iny
+	cpy	TMP3
+	bne	@error1
+	plp
+	bne	@ddigit2
+	jsr	dnegate
+@ddigit2:
+	NEXT
 @error1:
-	;pla
-	;dex	; discard *10
-	;dex
-	;dex	; discard address
-	;dex
-	;jsr	space
-	;lda	#<buffer
-	;sta	DSTACK,x
-	;lda	#>buffer
-	;sta	DSTACK+1,x
-	;inx
-	;inx
 	lda	LOAD
 	beq	@skip1
 	push	$200
@@ -3088,6 +3156,32 @@ number:
 @skip1:
 	jsr	primm
 	.byte	"undefined word", eol, 0
+	jmp	abort
+
+@mulbase:
+	lda	BASE
+	cmp	#10
+	beq	@mul10
+	cmp	#16
+	bne	@error2
+@mul16:
+	jsr	dtwomul		; d1*2
+	jsr	dtwomul		; d1*4
+	jsr	dtwomul		; d1*8
+	jsr	dtwomul		; d1*16
+	rts
+@mul10:
+	jsr	twodup		; d1 d1
+	jsr	dtwomul		; d1 d1*2
+	jsr	dtwomul		; d1 d1*4
+	jsr	dtwomul		; d1 d1*8
+	jsr	twoswap		; d1*8 d1
+	jsr	dtwomul		; d1*8 d1*2
+	jsr	dplus		; d1*10
+	rts
+@error2:
+	jsr	primm
+	.byte	"unsupported base", eol, 0
 	jmp	abort
 
 ; QUERY
@@ -3379,6 +3473,10 @@ interpret:
 	lda	DSTACK-2,x
 	ora	DSTACK-1,x
 	bne	@interpret2
+	lda	#<buffer
+	sta	DSTACK-2,x
+	lda	#>buffer
+	sta	DSTACK-1,x
 	jsr	number
 	lda	STATE
 	beq	@interpret1	; branch if in interpreter mode
@@ -3432,7 +3530,7 @@ cold:	; tsx
 	sta	BASE
 	sty	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.56 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.57 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
