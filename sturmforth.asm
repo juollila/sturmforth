@@ -1686,6 +1686,58 @@ dminus:	jsr	check4
 
 	NEXT
 
+; D0= ( d1 --- flag )
+; true if top double number is equal to zero
+	defcode "d0=", 0
+dzeroequal:
+	jsr	check2
+	jsr	zero
+	jsr	zero
+	jsr	dequal
+	NEXT
+
+; D= ( d1 d2 --- flag )
+; true if two top double numbers are equal.
+	defcode "d=", 0
+dequal:	jsr	check4
+	lda	DSTACK-8,x
+	cmp	DSTACK-4,x
+	bne	@equal0
+	lda	DSTACK-7,x
+	cmp	DSTACK-3,x
+	bne	@equal0
+	lda	DSTACK-6,x
+	cmp	DSTACK-2,x
+	bne	@equal0
+	lda	DSTACK-5,x
+	cmp	DSTACK-1,x
+	bne	@equal0
+	jmp	pushtrue
+@equal0:
+	jmp	pushfalse
+
+; D2* ( d --- d*2 )
+; multiply double number by two
+	defcode "D2*", 0
+dtwomul:	
+	jsr	check2
+	asl	DSTACK-4,x
+	rol	DSTACK-3,x
+	rol	DSTACK-2,x
+	rol	DSTACK-1,x
+	NEXT
+
+; D2/ ( d --- d/2 )
+; divide double number by two
+	defcode "D2/", 0
+dtwodiv:	
+	jsr	check2
+	lsr	DSTACK-1,x
+	ror	DSTACK-2,x
+	ror	DSTACK-3,x
+	ror	DSTACK-4,x
+	NEXT
+
 ; DABS ( d --- |d| )
 ; absolute value of double number.
 	defcode "dabs", 0
@@ -1697,6 +1749,36 @@ dabs:	jsr	check2
 	jsr	drop
 	jmp	dnegate
 @abs1:	jmp	drop
+
+; DMIN ( d1 d2 --- min )
+; leave lesser of two double numbers.
+	defcode "dmin", 0
+dmin:	jsr	check4
+	jsr	twoover		; d1 d2 d1
+	jsr	twoover		; d1 d2 d1 d2
+	jsr	dless		; d1 d2 flag
+	lda	DSTACK-2,x
+	beq	@min1
+	jsr	drop
+	jmp	twodrop
+@min1:	jsr	drop
+	jsr	twoswap
+	jmp	twodrop
+
+; DMAX ( d1 d2 --- max )
+; leave greater of two items.
+	defcode "dmax", 0
+dmax:	jsr	check4
+	jsr	twoover		; d1 d2 d1
+	jsr	twoover		; d1 d2 d1 d2
+	jsr	dless		; d1 d2 flag
+	lda	DSTACK-2,x
+	bne	@max1
+	jsr	drop
+	jmp	twodrop
+@max1:	jsr	drop
+	jsr	twoswap
+	jmp	twodrop
 
 ; DNEGATE (d --- d )
 ; negate
@@ -3350,7 +3432,7 @@ cold:	; tsx
 	sta	BASE
 	sty	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.55 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.56 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
