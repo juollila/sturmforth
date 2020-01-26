@@ -253,12 +253,7 @@ pick:
 ; >R ( n --- )
 ; move the top entry of the stack to the return stack.
 	defcode ">r", 0
-tor:	;jsr	trace
-	;stx	XSAVE
-	;tsx
-	;txa
-	;jsr	printbyte
-	;ldx	XSAVE
+tor:
 	jsr	check1
 	; save top item
 	lda	DSTACK-2,x
@@ -286,24 +281,12 @@ tor:	;jsr	trace
 	txs
 	; x was modified so we have to load the correct value
 	ldx	XSAVE
-	;jsr	trace
-	;stx	XSAVE
-	;tsx
-	;txa
-	;jsr	printbyte
-	;ldx	XSAVE
 	NEXT
 
 ; R> ( --- n )
 ; move the top entry of the return stack to the stack.
 	defcode "r>", 0
 rfrom:
-	;jsr	trace
-	;stx	XSAVE
-	;tsx
-	;txa
-	;jsr	printbyte
-	;ldx	XSAVE
 	stx	XSAVE
 	; save an item from the return stack.
 	tsx
@@ -329,12 +312,6 @@ rfrom:
 	inx
 	inx
 	jsr	checkoflow
-	;jsr	trace
-	;stx	XSAVE
-	;tsx
-	;txa
-	;jsr	printbyte
-	;ldx	XSAVE
 	NEXT
 
 ; R@ ( --- n )
@@ -600,14 +577,16 @@ dot:	jsr	check1
 	jmp	printspc
 @dot1:	pla
 	jsr	printint
-	jmp	printspc
+	jsr	printspc
+	NEXT
 
 ; ? ( addr --- )
 ; print value at addr
 	defcode "?", 0
 qmark:
 	jsr	fetch
-	jmp	dot
+	jsr	dot
+	NEXT
 
 ; U. ( n --- )
 ; print unsigned value of n
@@ -626,7 +605,8 @@ udot:	jsr	check1
 	jmp	printspc
 @udot1:	pla
 	jsr	printuint
-	jmp	printspc
+	jsr	printspc
+	NEXT
 
 ; D. ( d --- )
 ; print double number
@@ -824,20 +804,6 @@ type:
 	jsr	twodrop
 	NEXT
 
-; sign ( n --- )
-; print a sign of integer
-;	defcode "sign", 0
-;sign:
-;	jsr	check1
-;	lda	DSTACK-1,x
-;	bpl	@sign1
-;	lda	#'-'
-;	jsr	chrout
-;@sign1:
-;	dex
-;	dex
-;	NEXT
-
 ;
 ; *** NUMBER CONVERSION ***
 ;
@@ -995,20 +961,11 @@ include0:
 	ldx	TMP1
 	ldy	TMP2
 	jsr	setnam
-;	lda	#$80
-;	jsr	setmsg
 	jsr	open
 	bcs	@error2
-;	jsr	readst
-;	cmp	#0
-;	bne	@error2
 	ldx	#1		; file number
 	jsr	chkin
 	bcs	@error2
-;	jsr	readst
-;	cmp	#0
-;	bne	@error2
-
 	ldx	XSAVE
 	NEXT
 
@@ -1213,7 +1170,7 @@ fill:
 	sec
 	bcs	@memset1
 @exit:
-	rts
+	NEXT
 
 ; routine used by cmove, <cmove and fill
 initcmove:
@@ -1549,13 +1506,15 @@ divmod:	jsr	check2
 ; MOD ( n1 n2 --- (n1 mod n2) )
 	defcode "mod", 0
 mod:	jsr	divmod
-	jmp	drop
+	jsr	drop
+	NEXT
 
 ; / ( n1 n2 --- n1/n2 )
 	defcode "/", 0
 divide:	jsr	divmod
 	jsr	swap
-	jmp	drop
+	jsr	drop
+	NEXT
 
 ; MIN ( n1 n2 --- min )
 ; leave lesser of two items.
@@ -1570,7 +1529,8 @@ min:	jsr	check2
 	jmp	drop
 @min1:	jsr	drop
 	jsr	swap
-	jmp	drop
+	jsr	drop
+	NEXT
 
 ; MAX ( n1 n2 --- max )
 ; leave greater of two items.
@@ -1585,7 +1545,8 @@ max:	jsr	check2
 	jmp	drop
 @max1:	jsr	drop
 	jsr	swap
-	jmp	drop
+	jsr	drop
+	NEXT
 
 ; ABS ( n --- |n| )
 ; absolute value.
@@ -1597,7 +1558,8 @@ abs:	jsr	check1
 	beq	@abs1
 	jsr	drop
 	jmp	negate
-@abs1:	jmp	drop
+@abs1:	jsr	drop
+	NEXT
 
 ; AND ( n1 n2 --- (n1 and n2) )
 ; bitwise logical and.
@@ -1609,7 +1571,8 @@ bitand:	jsr	check2
 	lda	DSTACK-3,x
 	and	DSTACK-1,x
 	sta	DSTACK-3,x
-	jmp	drop
+	jsr	drop
+	NEXT
 
 ; OR ( n1 n2 --- (n1 or n2) )
 ; bitwise logical or.
@@ -1621,7 +1584,8 @@ bitor:	jsr	check2
 	lda	DSTACK-3,x
 	ora	DSTACK-1,x
 	sta	DSTACK-3,x
-	jmp	drop
+	jsr	drop
+	NEXT
 
 ; XOR ( n1 n2 --- (n1 xor n2) )
 ; bitwise logical xor.
@@ -1633,7 +1597,8 @@ bitxor:	jsr	check2
 	lda	DSTACK-3,x
 	eor	DSTACK-1,x
 	sta	DSTACK-3,x
-	jmp	drop
+	jsr	drop
+	NEXT
 
 ;
 ; *** DOUBLE AND MIXED LENGTH ARITHMETIC ***
@@ -1715,9 +1680,11 @@ dequal:	jsr	check4
 	lda	DSTACK-5,x
 	cmp	DSTACK-1,x
 	bne	@equal0
-	jmp	pushtrue
+	jsr	pushtrue
+	NEXT
 @equal0:
-	jmp	pushfalse
+	jsr	pushfalse
+	NEXT
 
 ; D2* ( d --- d*2 )
 ; multiply double number by two
@@ -1750,8 +1717,10 @@ dabs:	jsr	check2
 	lda	DSTACK-2,x
 	beq	@abs1
 	jsr	drop
-	jmp	dnegate
-@abs1:	jmp	drop
+	jsr	dnegate
+	NEXT
+@abs1:	jsr	drop
+	NEXT
 
 ; DMIN ( d1 d2 --- min )
 ; leave lesser of two double numbers.
@@ -1763,10 +1732,12 @@ dmin:	jsr	check4
 	lda	DSTACK-2,x
 	beq	@min1
 	jsr	drop
-	jmp	twodrop
+	jsr	twodrop
+	NEXT
 @min1:	jsr	drop
 	jsr	twoswap
-	jmp	twodrop
+	jsr	twodrop
+	NEXT
 
 ; DMAX ( d1 d2 --- max )
 ; leave greater of two items.
@@ -1778,10 +1749,12 @@ dmax:	jsr	check4
 	lda	DSTACK-2,x
 	bne	@max1
 	jsr	drop
-	jmp	twodrop
+	jsr	twodrop
+	NEXT
 @max1:	jsr	drop
 	jsr	twoswap
-	jmp	twodrop
+	jsr	twodrop
+	NEXT
 
 ; DNEGATE (d --- d )
 ; negate
@@ -1819,9 +1792,11 @@ dless:	jsr	check4
 	eor	#$80
 @less1:	bmi	@less2
 	jsr	twodrop
-	jmp	pushfalse
+	jsr	pushfalse
+	NEXT
 @less2:	jsr	twodrop
-	jmp	pushtrue
+	jsr	pushtrue
+	NEXT
 
 
 ; UM* (u1 u2 --- ud ) (n1*n2 32 bit)
@@ -2074,9 +2049,11 @@ equal:	jsr	check2
 	lda	DSTACK-3,x
 	cmp	DSTACK-1,x
 	bne	@equal0
-	jmp	pushtrue
+	jsr	pushtrue
+	NEXT
 @equal0:
-	jmp	pushfalse
+	jsr	pushfalse
+	NEXT
 
 ; (n1 n2 --- true )
 ; this is not forth word
@@ -2110,8 +2087,10 @@ less:	lda	DSTACK-4,x
 	bvc	@less1
 	eor	#$80
 @less1:	bmi	@less2
-	jmp	pushfalse
-@less2:	jmp	pushtrue
+	jsr	pushfalse
+	NEXT
+@less2:	jsr	pushtrue
+	NEXT
 
 ; > ( n1 n2 --- flag )
 ; true if n1>n2. n2<n1
@@ -2126,9 +2105,11 @@ greater:
 	eor	#$80
 @greater1:	
 	bmi	@greater2
-	jmp	pushfalse
+	jsr	pushfalse
+	NEXT
 @greater2:
-	jmp	pushtrue
+	jsr	pushtrue
+	NEXT
 	
 ; 0= ( n --- flag )
 ; true if n = 0
@@ -2136,7 +2117,8 @@ greater:
 zeroequal:
 	jsr	check1
 	jsr	zero
-	jmp	equal
+	jsr	equal
+	NEXT
 
 ; 0< ( n --- flag )
 ; true if n < 0
@@ -2144,7 +2126,8 @@ zeroequal:
 zeroless:
 	jsr	check1
 	jsr	zero
-	jmp	less
+	jsr	less
+	NEXT
 
 ; 0> ( n --- flag )
 ; true if n > 0
@@ -2152,12 +2135,14 @@ zeroless:
 zerogreater:
 	jsr	check1
 	jsr	zero
-	jmp	greater
+	jsr	greater
+	NEXT
 
 ; not ( flag - ~flag )
 ; reverse truth value.
 	defcode "not", 0
-not:	jmp	zeroequal
+not:	jsr	zeroequal
+	NEXT
 
 ;
 ; *** BRANCHES ***
@@ -2559,7 +2544,6 @@ dump:
 	jsr	cfetch		; addr+n addr n
 	jsr	udot		; addr+n addr
 	jsr	oneplus		; addr+n addr+1
-;	jsr	printspc
 	dec	DUMPTMP
 	bpl	@dump2
 	bmi	@dump1
@@ -2570,12 +2554,6 @@ dump:
 	dex
 	NEXT
 
-;	jsr	dup		; addr n addr addr
-;	jsr	dot		; addr n addr
-;	jsr	printspc
-;	jsr	oneplus		; addr n addr+1
-
-	
 ;
 ; *** SYSTEM ***
 ;
@@ -2915,7 +2893,7 @@ colon:
 	jsr	last		; hide the created word
 	jsr	fetch
 	jsr	hide
-	NEXT			; EXIT
+	NEXT
 
 ; ; ( --- )
 ; stop defining a new word
@@ -2927,7 +2905,7 @@ semicolon:
 	jsr	fetch
 	jsr	unhide
 	jsr	leftbr
-	NEXT			; EXIT
+	NEXT
 
 ; [COMPILE] ( --- )
 ; enforces compilation of the next word
@@ -2964,17 +2942,11 @@ forget:
 	dex			; stack: addr
 	dex
 	jsr	dup		; stack: addr addr
-	;jsr	trace
 	jsr	fetch		; stack: addr prev_word_addr
-	;jsr	trace
 	jsr	last		; stack: addr prev_word_addr lastptr_addr
-	;jsr	trace
 	jsr	store		; stack: addr
-	;jsr	trace
 	jsr	here		; stack: addr hereptr_addr
-	;jsr	trace
 	jsr	store		; stack: -
-	;jsr	trace
 	NEXT
 @error1:
 	jsr	primm
@@ -3065,76 +3037,6 @@ number:
 	plp
 	bne	@number2
 	jsr	negate
-
-;number:	
-;	ldy	#0
-;	sty	TMP1
-;	sty	TMP2
-;	lda	buffer+1,y	; check sign
-;	cmp	#'-'
-;	php
-;	bne	@number1
-;	iny
-;@number1:
-	; * base
-;	lda	TMP1
-;	sta	DSTACK,x
-;	inx
-;	lda	TMP2
-;	sta	DSTACK,x
-;	inx
-	;lda	#10
-;	lda	BASE
-;	sta	DSTACK,x
-;	inx
-;	lda	#0
-;	sta	DSTACK,x
-;	inx
-;	jsr	mul
-	; + digit
-;	lda	buffer+1,y
-;	cmp	#'0'
-;	bcc	@error1
-;	cmp	#'g'
-;	bcs	@error1
-;	cmp	#':'
-;	bcc	@dec
-;	cmp	#'a'
-;	bcc	@error1
-;	sec
-;	sbc	#7		; 'a' - ':'
-;	pha
-;	lda	BASE		; check that we are in hex base
-;	cmp	#16
-;	bne	@error1
-;	pla
-;@dec:
-;	sec	
-;	sbc	#'0'
-;	sta	DSTACK,x
-;	inx
-;	lda	#0
-;	sta	DSTACK,x
-;	inx
-;	jsr	plus
-	; TMP = TMP * 10 + digit
-;	lda	DSTACK-2,x
-;	sta	TMP1
-;	lda	DSTACK-1,x
-;	sta	TMP2
-;	iny
-;	dex
-;	dex
-;	tya
-;	cmp	buffer
-;	bne	@number1
-;	lda	TMP1
-;	sta	DSTACK-2,x
-;	lda	TMP2
-;	sta	DSTACK-1,x
-;	plp
-;	bne	@number2
-;	jsr	negate
 @number2:
 	NEXT
 @ddigit:
@@ -3201,7 +3103,6 @@ query:
 	inx
 	cpx	#$41		; check max length
 	beq	@error1
-	;sta	TMP4
 	pha
 	lda	LOAD		; skip i/o status checking if read from keyboard
 	beq	@query4
@@ -3209,7 +3110,6 @@ query:
 	cmp	#0
 	bne	@query3		; branch if eof or error
 @query4:
-	;lda	TMP4
 	pla
 	cmp	#eol
 	bne	@query1		; branch if not end of line
@@ -3511,9 +3411,7 @@ interpret:
 ; COLD
 ; cold start
 	defcode "cold", 0
-cold:	; tsx
-	; stx	SPSAVE		; save original stack pointer
-				; (i.e. sp can be restored when bye command is supported.
+cold:
 	lda	#8
 	ldy	#0
 	sta	DEVICE
@@ -3567,22 +3465,37 @@ trace:
 	txa
 	clc
 	ror
-	jsr	printbyte
+	sta	DSTACK,x
+	lda	#0
+	sta	DSTACK+1,x
+	inx
+	inx
+	jsr	udot
 	jsr	primm
 	.byte	"): ",0
 	ldx	#0
 @trace1:
 	cpx	XSAVE
-	beq	@trace2
+	beq	@trace4
 	lda	DSTACK+1,x
 	tay
 	lda	DSTACK,x
-	jsr	printdec
+	pha
+	lda	BASE
+	cmp	#10
+	bne	@trace2
+	pla
+	jsr	printudec
+	jmp	@trace3
+@trace2:
+	pla
+	jsr	printuint
+@trace3:
 	jsr	printspc
 	inx
 	inx
 	jmp	@trace1
-@trace2:
+@trace4:
 	jsr	printcr
 	ldx	XSAVE
 	rts
