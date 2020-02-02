@@ -978,6 +978,170 @@ include0:
 	.byte	"disk i/o error",eol,0
 	jmp	abort
 
+; OPEN-FILE ( addr n id --- ior )
+; opens a file
+; addr = addr of file name
+; n = len of file name
+; id = file id
+; ior = io result
+	defcode "open-file", 0
+openfile:
+	jsr	check3
+	stx	XSAVE
+	lda	DSTACK-6,x	; save addr of filename
+	sta	TMP1
+	lda	DSTACK-5,x
+	sta	TMP2
+	lda	DSTACK-4,x	; save filename len
+	sta	TMP3
+
+	lda	DSTACK-2,x	; file id
+	ldx	DEVICE
+	ldy	#0		; secondary address
+	jsr	setlfs
+
+	lda	TMP3		; filename len
+	ldx	TMP1		; addr of filename
+	ldy	TMP2
+	jsr	setnam
+
+	jsr	open
+	bcc	@open1
+	lda	#1
+	bne	@open2
+@open1:
+	lda	#0
+@open2:
+	ldx	XSAVE
+	jsr	twodrop
+	sta	DSTACK-2,x
+	lda	#0
+	sta	DSTACK-1,x
+	NEXT
+
+; CLOSE-FILE ( id --- ior )
+; closes a file
+; id = file id
+; ior = io result
+	defcode "close-file", 0
+closefile:
+	jsr	check1
+	stx	XSAVE
+	lda	DSTACK-2,x	; file id
+	jsr	close
+	bcc	@close1
+	lda	#1
+	bne	@close2
+@close1:
+	lda	#0
+@close2:
+	ldx	XSAVE
+	sta	DSTACK-2,x
+	lda	#0
+	sta	DSTACK-1,x
+	NEXT
+
+; READ-FILE ( addr n1 id --- n2 ior )
+; reads a file
+; addr = dst addr
+; n1 = bytes to read
+; id = file id
+; n2 = number of successfully read bytes
+; ior = io result
+	defcode "read-file", 0
+readfile:
+	lda	#0
+	sta	READLINE
+readfile1:
+	jsr	check3
+	stx	XSAVE
+	lda	#0		; bytes read =  0
+	sta	AUX
+	sta	AUX+1
+	lda	DSTACK-6,x	; get dst addr
+	sta	TMP1
+	lda	DSTACK-5,x
+	sta	TMP2
+	lda	DSTACK-4,x	; get number of bytes
+	sta	TMP3
+	lda	DSTACK-3,x
+	sta	TMP4
+
+	lda	DSTACK-2,x	; get file id
+	tax
+	jsr	chkin
+
+@read1:
+	jsr	chrin
+	tay			; check eol and linefeed
+	lda	READLINE
+	beq	@eol2
+	cpy	#eol
+	beq	@eol1
+	cpy	#lfeed
+	bne	@eol2
+@eol1:
+	jsr	clrchn
+	lda	#0
+	beq	@read4
+@eol2:	tya			; save char
+	ldy	#0
+	sta	(TMP1),y
+	inc	TMP1
+	bne	@read2
+	inc	TMP2
+@read2:	jsr	readst
+	cmp	#0
+	bne	@eof		; branch if eof or error
+	inc	AUX		; bytes read = bytes read + 1
+	bne	@read3
+	inc	AUX+1
+@read3:
+	clc			; check if n1 bytes has been read
+	lda	TMP3
+	sbc	AUX
+	lda	TMP4
+	sbc	AUX+1
+	bcs	@read1
+	jsr	clrchn
+	lda	#0
+@read4:
+	ldx	XSAVE
+	dex
+	dex
+	sta	DSTACK-2,x	; set ior
+	lda	#0
+	sta	DSTACK-1,x
+	lda	AUX		; n2 = bytes read
+	sta	DSTACK-4,x
+	lda	AUX+1
+	sta	DSTACK-3,x
+	NEXT
+@eof:
+	pha
+	jsr	clrchn
+	pla
+	cmp	#eof
+	bne	@read4
+	inc	AUX
+	bne	@eof2
+	inc	AUX+1
+@eof2:	jmp	@read4
+	
+
+; READ-LINE ( addr n1 id --- n2 ior )
+; reads a file until n1 bytes has read or end of line is read
+; addr = dst addr
+; n1 = bytes to read
+; id = file id
+; n2 = number of successfully read bytes
+; ior = io result
+	defcode "read-line", 0
+readline:
+	lda	#$80
+	sta	READLINE
+	jmp	readfile1
+
 ;
 ; *** MEMORY (peek, poke and copy) ***
 ;
@@ -2558,7 +2722,7 @@ dump:
 ; *** SYSTEM ***
 ;
 
-; SYS ( <flag> n1 n2 n3 addr --- <flag> n4 n5 n6 )
+; SYS ( flag n1 n2 n3 addr --- flag n4 n5 n6 )
 ; call machine code routine
 ; flag = carry flag
 ; n1 = a
@@ -2600,15 +2764,19 @@ sys:
 	tax
 	pla			; set a
 	rts			; SYS!!!
-@sys4:	pha			; save a, x
+@sys4:	php			; save status, a, x
+	pha
 	txa
 	pha
 	ldx	XSAVE		; restore data stack pointer
-	sty	DSTACK-4,x	; copy y, x, a to the data stack
+	sty	DSTACK-4,x	; copy y, x, a and flag to the data stack
 	pla
 	sta	DSTACK-6,x
 	pla
 	sta	DSTACK-8,x
+	pla
+	and	#1
+	sta	DSTACK-10,x
 	dex			; remove address from the data stack
 	dex
 	NEXT

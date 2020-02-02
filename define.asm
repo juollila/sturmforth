@@ -24,6 +24,7 @@
 ; other memory locations
 	nbuffer	= $110	; number string buffer
 	buffer	= $200	; text buffer
+	READLINE = $2e6
 	DUMPTMP	= $2e7
 	NUMLEN	= $2e8
 	NUMPTR	= $2e9
@@ -46,10 +47,10 @@
 	setlfs	= $ffba
 	setnam	= $ffbd
 	open	= $ffc0
-;	close	= $ffc3
+	close	= $ffc3
 	chkin	= $ffc6
 ;	chkout	= $ffc9
-;	clrchn	= $ffcc
+	clrchn	= $ffcc
 	chrin	= $ffcf
 	chrout	= $ffd2
 ;	load	= $ffd5
@@ -57,6 +58,6 @@
 ;	stop	= $ffe1
 	getin	= $ffe4
 	clall	= $ffe7
-	setmsg	= $ff90
+;	setmsg	= $ff90
 ;	plot	= $fff0
 
