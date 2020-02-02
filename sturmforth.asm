@@ -997,7 +997,11 @@ openfile:
 
 	lda	DSTACK-2,x	; file id
 	ldx	DEVICE
-	ldy	#0		; secondary address
+	ldy	#2		; secondary address
+	cmp	#15		; check command channel
+	bne	@nocommand
+	tay
+@nocommand:
 	jsr	setlfs
 
 	lda	TMP3		; filename len
@@ -1051,7 +1055,7 @@ closefile:
 	defcode "read-file", 0
 readfile:
 	lda	#0
-	sta	READLINE
+	sta	FLINE
 readfile1:
 	jsr	check3
 	stx	XSAVE
@@ -1074,7 +1078,7 @@ readfile1:
 @read1:
 	jsr	chrin
 	tay			; check eol and linefeed
-	lda	READLINE
+	lda	FLINE
 	beq	@eol2
 	cpy	#eol
 	beq	@eol1
@@ -1139,8 +1143,102 @@ readfile1:
 	defcode "read-line", 0
 readline:
 	lda	#$80
-	sta	READLINE
+	sta	FLINE
 	jmp	readfile1
+
+; WRITE-FILE ( addr n1 id --- ior )
+; writes a file
+; addr = src addr
+; n1 = bytes to write
+; id = file id
+; ior = io result
+	defcode "write-file", 0
+writefile:
+	lda	#0
+	sta	FLINE
+writefile1:
+	jsr	check3
+	stx	XSAVE
+	lda	#0		; bytes written =  0
+	sta	AUX
+	sta	AUX+1
+	lda	DSTACK-6,x	; get src addr
+	sta	TMP1
+	lda	DSTACK-5,x
+	sta	TMP2
+	lda	DSTACK-4,x	; get number of bytes
+	sta	TMP3
+	lda	DSTACK-3,x
+	sta	TMP4
+
+	lda	DSTACK-2,x	; get file id
+	tax
+	jsr	chkout
+
+@write1:
+	ldy	#0
+	lda	(TMP1),y
+	;tay
+	;lda	FLINE
+	;beq	@write1b
+	;cmp	#eol
+	;bne	@write1b
+	;jsr	chrout
+	;jmp	@write3b
+;@write1b:
+	;tya
+	jsr	chrout
+	inc	TMP1
+	bne	@write2
+	inc	TMP2
+@write2:
+	jsr	readst
+	cmp	#0
+	bne	@error		; branch if error
+	inc	AUX		; bytes written = bytes written + 1
+	bne	@write3
+	inc	AUX+1
+@write3:
+	clc			; check if n1 bytes has been written
+	lda	TMP3
+	sbc	AUX
+	lda	TMP4
+	sbc	AUX+1
+	bcs	@write1		; branch if not all bytes have been written
+	tay			; check if eol should be written
+	lda	FLINE
+	beq	@write3b
+	cpy	#eol
+	beq	@write3b
+	lda	#eol
+	jsr	chrout
+@write3b:
+	jsr	clrchn
+	lda	#0
+@write4:
+	ldx	XSAVE
+	jsr	twodrop
+	sta	DSTACK-2,x	; set ior
+	lda	#0
+	sta	DSTACK-1,x
+	NEXT
+@error:
+	pha
+	jsr	clrchn
+	pla
+	jmp	@write4
+
+; WRITE-LINE ( addr n1 id --- ior )
+; write a line to a file
+; addr = dst addr
+; n1 = bytes to write
+; id = file id
+; ior = io result
+	defcode "write-line", 0
+writeline:
+	lda	#$80
+	sta	FLINE
+	jmp	writefile1
 
 ;
 ; *** MEMORY (peek, poke and copy) ***

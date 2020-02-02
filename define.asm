@@ -24,7 +24,7 @@
 ; other memory locations
 	nbuffer	= $110	; number string buffer
 	buffer	= $200	; text buffer
-	READLINE = $2e6
+	FLINE = $2e6
 	DUMPTMP	= $2e7
 	NUMLEN	= $2e8
 	NUMPTR	= $2e9
@@ -49,7 +49,7 @@
 	open	= $ffc0
 	close	= $ffc3
 	chkin	= $ffc6
-;	chkout	= $ffc9
+	chkout	= $ffc9
 	clrchn	= $ffcc
 	chrin	= $ffcf
 	chrout	= $ffd2
