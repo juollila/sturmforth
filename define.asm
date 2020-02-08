@@ -41,6 +41,12 @@
 	BASE	= $2fc	; numeric base
 	IMM	= $2fe	; immediate mode (used by find and interpreter)
 	CREATE	= $2ff	; create1 vs create flag
+; for sys word
+	ACC	= $30c	; accumulator
+	XR	= $30d	; x register
+	YR	= $30e	; y register
+	SR	= $30f	; status register
+
 
 ; kernal functions
 	readst	= $ffb7

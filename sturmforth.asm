@@ -540,6 +540,19 @@ base:
 device:
 	variable DEVICE
 
+	defcode "ac", 0
+	variable ACC
+
+	defcode "xr", 0
+	variable XR
+
+	defcode "yr", 0
+	variable YR
+
+	defcode "sr", 0
+	variable SR
+
+
 ; HEX ( --- )
 ; changes base to hex
 	defcode "hex", 0
@@ -2820,19 +2833,11 @@ dump:
 ; *** SYSTEM ***
 ;
 
-; SYS ( flag n1 n2 n3 addr --- flag n4 n5 n6 )
+; SYS ( addr --- )
 ; call machine code routine
-; flag = carry flag
-; n1 = a
-; n2 = x
-; n3 = y
-; addr = address of routine to be called
-; n4 = a
-; n5 = x
-; n6 = y
 	defcode "sys", 0
 sys:
-	jsr	check4		; carryflag is optional
+	jsr	check1
 	stx	XSAVE		; save data stack pointer
 	lda	#>(@sys4-1)	; push return address
 	pha
@@ -2847,38 +2852,23 @@ sys:
 	pha
 	tya
 	pha
-	lda	DSTACK-8,x	; push a
+	lda	SR		; set sr
 	pha
-	lda	DSTACK-6,x	; push x
-	pha
-	lda	DSTACK-4,x	; set y
-	tay
-	lda	DSTACK-10,x	; set carry if needed
-	beq	@sys2
-	sec
-	bcs	@sys3
-@sys2:	clc
-@sys3:	pla			; set x
-	tax
-	pla			; set a
+	plp
+	lda	ACC		; set a
+	ldx	XR		; set x
+	ldy	YR		; set y
 	rts			; SYS!!!
-@sys4:	php			; save status, a, x
-	pha
-	txa
-	pha
+@sys4:	sta	ACC		; save a, status, x, y
+	php
+	pla
+	sta	SR
+	stx	XR
+	sty	YR
 	ldx	XSAVE		; restore data stack pointer
-	sty	DSTACK-4,x	; copy y, x, a and flag to the data stack
-	pla
-	sta	DSTACK-6,x
-	pla
-	sta	DSTACK-8,x
-	pla
-	and	#1
-	sta	DSTACK-10,x
 	dex			; remove address from the data stack
 	dex
 	NEXT
-	
 	
 ;
 ; *** COMPILER ***
@@ -3678,10 +3668,15 @@ interpret:
 ; cold start
 	defcode "cold", 0
 cold:
-	lda	#8
-	ldy	#0
-	sta	DEVICE
-	sty	DEVICE+1
+	ldy	#8
+	sty	DEVICE
+	lda	#0
+	sta	DEVICE+1
+	sta	ACC
+	sta	XR
+	sta	YR
+	lda	#$20
+	sta	SR
 	lda	#<lastword	; initialize last word pointer	
 	sta	LASTPTR
 	lda	#>lastword
