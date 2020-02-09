@@ -113,7 +113,7 @@ stackunderflow:
 
 ; DROP ( n --- )
 ; remove the top entry from the stack.
-	defcode	"drop", 0
+	defcode "drop", 0
 drop:
 	jsr	check1
 	dex
@@ -122,7 +122,7 @@ drop:
 
 ; DUP ( n --- n n )
 ; duplicate the top entry on the stack.
-	defcode	"dup", 0
+	defcode "dup", 0
 dup:
 	jsr	check1
 	lda	DSTACK-2,x
@@ -150,7 +150,7 @@ over:
 
 ; ROT ( n1 n2 n3 --- n2 n3 n1 )
 ; rotate the third item to the top of the stack.
-	defcode	"rot", 0
+	defcode "rot", 0
 rot:	jsr	check3
 	; save n1
 	lda	DSTACK-6,x
@@ -390,7 +390,7 @@ twodrop:
 ; 2DUP ( d --- d d )
 ;      ( n1 n2 --- n1 n2 n1 n2 )
 ; duplicate the top double number on the stack.
-	defcode	"2dup", 0
+	defcode "2dup", 0
 twodup:
 	jsr	check2
 	jsr	over
@@ -416,7 +416,7 @@ twoover:
 ; 2ROT ( d1 d2 d3 --- d2 d3 d1 )
 ;      ( n1 n2 n3 n4 n5 n6 --- n3 n4 n5 n6 n1 n2 )
 ; rotate the third double number to the top of the stack.
-	defcode	"2rot", 0
+	defcode "2rot", 0
 tworot:	jsr	check6
 	jsr	tor		; d1 d2
 	jsr	tor
@@ -563,7 +563,7 @@ hex:
 
 ; DECIMAL ( --- )
 ; changes base to decimal
-	defcode	"decimal", 0
+	defcode "decimal", 0
 decimal:
 	lda	#10
 	sta	BASE
@@ -1963,7 +1963,7 @@ dequal:	jsr	check4
 
 ; D2* ( d --- d*2 )
 ; multiply double number by two
-	defcode "D2*", 0
+	defcode "d2*", 0
 dtwomul:	
 	jsr	check2
 	asl	DSTACK-4,x
@@ -1974,7 +1974,7 @@ dtwomul:
 
 ; D2/ ( d --- d/2 )
 ; divide double number by two
-	defcode "D2/", 0
+	defcode "d2/", 0
 dtwodiv:	
 	jsr	check2
 	lsr	DSTACK-1,x
@@ -2265,7 +2265,7 @@ muldivmod:
 ; ud2 = quotient (unsigned 32 bit int)
 ;
 ; This routine is used by number conversion routines
-	defcode	"/ummod32", 0
+	defcode "/ummod32", 0
 ummod32:
 	jsr	check3
 @div0:
@@ -3689,7 +3689,7 @@ cold:
 	sta	BASE
 	sty	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.61 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.63 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
