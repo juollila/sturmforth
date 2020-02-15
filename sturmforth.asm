@@ -740,6 +740,112 @@ dotquote:
 	.byte	"no string",eol,0
 	jmp	abort
 
+; C" ( --- ) compile time
+;    ( --- addr ) runtime
+; compile a string
+:	.word	:--		; defcode "C\"", FLAG_I
+	.byte	2 + FLAG_I
+	.byte	'c', '"'
+cquote:
+	push	quote
+	jsr	word
+	lda	DSTACK-2,x
+	sta	TMP3
+	lda	DSTACK-1,x
+	sta	TMP4
+	jsr	cfetch		; stack: len+1
+	jsr	oneminus	; stack: len
+	ldy	#0		; check whether a string was found
+	lda	(TMP3),y
+	beq	@error
+	jsr	here
+	jsr	fetch
+	push	10		; jsr lit addr1 jsr branch addr2
+	jsr	plus		; stack: len here+10
+	jsr	literal
+	push	$20		; jsr branch
+	jsr	ccomma
+	push	branch
+	jsr	comma
+	jsr	here		; copy location of branch operand to data stack
+	jsr	fetch
+	push	0		; dummy address
+	jsr	comma
+	jsr	swap		; stack: addr_of_operand len
+	jsr	ccomma
+@cquote1:
+	inc	TMP3
+	bne	@cquote2
+	inc	TMP4
+@cquote2:
+	ldy	#1		; ignore leading space
+	lda	(TMP3),y
+	cmp	#quote		; branch to end if quote char
+	beq	@cquote3
+	sta	DSTACK,x
+	inx
+	lda	#0		
+	sta	DSTACK,x
+	inx
+	jsr	ccomma		; compile the byte
+	jmp	@cquote1
+@cquote3:
+	inc	CPTR		; HACK: ignore the following quote in the input stream
+	jsr	here		; update jsr branch addr2
+	jsr	fetch
+	jsr	swap
+	jsr	store
+	NEXT
+@error:
+	jsr	primm
+	.byte	"no string",eol,0
+	jmp	abort
+
+; S" ( --- addr )
+; compile a string
+:	.word	:--		; defcode "S\"", FLAG_I
+	.byte	2
+	.byte	's', '"'
+squote:
+	push	quote
+	jsr	word
+	lda	DSTACK-2,x
+	sta	TMP3
+	lda	DSTACK-1,x
+	sta	TMP4
+	jsr	cfetch		; stack: len+1
+	jsr	oneminus	; stack: len
+	ldy	#0		; check whether a string was found
+	lda	(TMP3),y
+	beq	@error
+	jsr	here
+	jsr	fetch		; stack: len addr
+	jsr	swap		; stack: addr len
+@squote1:
+	inc	TMP3
+	bne	@squote2
+	inc	TMP4
+@squote2:
+	ldy	#1		; ignore leading space
+	lda	(TMP3),y
+	cmp	#quote		; branch to end if quote char
+	beq	@squote3
+	sta	DSTACK,x
+	inx
+	lda	#0		
+	sta	DSTACK,x
+	inx
+	jsr	ccomma		; compile the byte
+	jmp	@squote1
+@squote3:
+	inc	CPTR		; HACK: ignore the following quote in the input stream
+	NEXT
+@error:
+	jsr	primm
+	.byte	"no string",eol,0
+	jmp	abort
+
+
 ; .( ( --- )
 ; print a string which is terminated with )
 	defcode ".(", 0
@@ -3689,7 +3795,7 @@ cold:
 	sta	BASE
 	sty	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.63 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.64 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 

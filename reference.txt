@@ -290,6 +290,10 @@ Branch always. This word is used internally by SturmFORTH.
 C! ( n addr -- )
 Store the least significant 8-bits of n at addr.
 
+C" ( -- addr)
+Used in colon definitions. Compile a counted string. At runtime, the address
+of counted string will pushed on the stack.
+
 C, ( n -- )
 ALLOT one byte then store the least significant 8 bits of n to the dictionary.
 
@@ -561,6 +565,9 @@ At  run-time, REPEAT returns to just after the corresponding BEGIN.
 
 ROT ( n1 n2 n3 -- n2 n3 n1 )
 Rotate the top three values, bringing the deepest to the top.
+
+S" ( -- addr n )
+Compile a string. Leave the address of string and its length on the stack.
 
 SIGN ( n -- )
 Insert the PETSCII "-" (minus sign) into the pictured numeric output string
