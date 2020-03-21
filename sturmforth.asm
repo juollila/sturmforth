@@ -2814,10 +2814,10 @@ j_statement:
 	NEXT
 	; runtime
 @j1:	stx	XSAVE
-	tsx			; stack: addr($101), index1($103), limit1($105), addr($107) index2($109), limit2($10b)
-	lda	$109,x		; get index2
+	tsx			; stack: addr($101), index1($103), limit1($105), index2($107), limit2($109)
+	lda	$107,x		; get index2
 	sta	TMP1
-	lda	$10a,x
+	lda	$108,x
 	sta	TMP2
 	ldx	XSAVE
 	lda	TMP1		; save index to data stack
@@ -3725,10 +3725,14 @@ execute:
 interpret:
 	jsr	checkoflow
 	lda	LOAD
-	bne	@interpret0
+	bne	@interpret0b
+	lda	STATE
+	bne	@interpret0a
 	jsr	primm
-	.byte	"ok ",eol,0
-@interpret0:
+	.byte	"ok ",0
+@interpret0a:
+	jsr	printcr
+@interpret0b:
 	jsr	query
 @interpret1:
 	lda	#$20		; space is delimiter
