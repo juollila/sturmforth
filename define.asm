@@ -24,7 +24,8 @@
 ; other memory locations
 	nbuffer	= $110	; number string buffer
 	buffer	= $200	; text buffer
-	FLINE = $2e6
+	STRCNT	= $2e5	; used in s" ." etc. words as a counter var
+	FLINE 	= $2e6
 	DUMPTMP	= $2e7
 	NUMLEN	= $2e8
 	NUMPTR	= $2e9

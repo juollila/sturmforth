@@ -715,12 +715,13 @@ dotquote:
 	push	primm
 	jsr	comma
 @dotquote1:
-	inc	TMP3
-	bne	@dotquote2
-	inc	TMP4
+	ldy	#2
+	sty	STRCNT
 @dotquote2:
-	ldy	#1		; ignore leading space
+	ldy	STRCNT
 	lda	(TMP3),y
+	cmp	#eol		; branch to end if eol
+	beq	@dotquote4
 	cmp	#quote		; branch to end if quote char
 	beq	@dotquote3
 	sta	DSTACK,x
@@ -729,9 +730,12 @@ dotquote:
 	sta	DSTACK,x
 	inx
 	jsr	ccomma		; compile the byte
-	jmp	@dotquote1
+	inc	STRCNT
+	bne	@dotquote2
+	beq	@dotquote4
 @dotquote3:
 	inc	CPTR		; HACK: ignore the following quote in the input stream
+@dotquote4:
 	push	0		; compile zero terminator for the primm
 	jsr	ccomma	
 	NEXT
@@ -774,12 +778,13 @@ cquote:
 	jsr	swap		; stack: addr_of_operand len
 	jsr	ccomma
 @cquote1:
-	inc	TMP3
-	bne	@cquote2
-	inc	TMP4
+	ldy	#2
+	sty	STRCNT
 @cquote2:
-	ldy	#1		; ignore leading space
+	ldy	STRCNT
 	lda	(TMP3),y
+	cmp	#eol		; branch to end if eol
+	beq	@cquote4
 	cmp	#quote		; branch to end if quote char
 	beq	@cquote3
 	sta	DSTACK,x
@@ -788,9 +793,12 @@ cquote:
 	sta	DSTACK,x
 	inx
 	jsr	ccomma		; compile the byte
-	jmp	@cquote1
+	inc	STRCNT
+	bne	@cquote2
+	beq	@cquote4
 @cquote3:
 	inc	CPTR		; HACK: ignore the following quote in the input stream
+@cquote4:
 	jsr	here		; update jsr branch addr2
 	jsr	fetch
 	jsr	swap
@@ -822,12 +830,13 @@ squote:
 	jsr	fetch		; stack: len addr
 	jsr	swap		; stack: addr len
 @squote1:
-	inc	TMP3
-	bne	@squote2
-	inc	TMP4
+	ldy	#2		; ignore len and space
+	sty	STRCNT
 @squote2:
-	ldy	#1		; ignore leading space
+	ldy	STRCNT
 	lda	(TMP3),y
+	cmp	#eol		; branch to end if eol
+	beq	@squote4
 	cmp	#quote		; branch to end if quote char
 	beq	@squote3
 	sta	DSTACK,x
@@ -836,9 +845,12 @@ squote:
 	sta	DSTACK,x
 	inx
 	jsr	ccomma		; compile the byte
-	jmp	@squote1
+	inc	STRCNT
+	bne	@squote2
+	beq	@squote4
 @squote3:
 	inc	CPTR		; HACK: ignore the following quote in the input stream
+@squote4:
 	NEXT
 @error:
 	jsr	primm
@@ -862,18 +874,20 @@ dotparen:
 	lda	(TMP3),y
 	beq	@error
 @dotquote1:
-	inc	TMP3
-	bne	@dotquote2
-	inc	TMP4
+	ldy	#2		; ignore len and space
 @dotquote2:
-	ldy	#1		; ignore leading space
 	lda	(TMP3),y
+	cmp	#eol		; branch to end if eol
+	beq	@dotquote4
 	cmp	#')'		; branch to end if quote char
 	beq	@dotquote3
 	jsr	chrout
-	jmp	@dotquote1
+	iny
+	bne	@dotquote2
+	beq	@dotquote4
 @dotquote3:
 	inc	CPTR		; HACK: ignore the following char in the input stream
+@dotquote4:
 	NEXT
 @error:
 	jsr	primm
