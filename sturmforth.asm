@@ -3414,6 +3414,10 @@ number:
 	bne	@number2
 	jsr	negate
 @number2:
+	lda	STATE
+	beq	@number3
+	jsr	literal
+@number3:
 	NEXT
 @ddigit:
 	iny
@@ -3423,6 +3427,12 @@ number:
 	bne	@ddigit2
 	jsr	dnegate
 @ddigit2:
+	lda	STATE
+	beq	@ddigit3
+	jsr	swap
+	jsr	literal
+	jsr	literal
+@ddigit3:
 	NEXT
 @error1:
 	lda	LOAD
@@ -3758,9 +3768,9 @@ interpret:
 	lda	#>buffer
 	sta	DSTACK-1,x
 	jsr	number
-	lda	STATE
-	beq	@interpret1	; branch if in interpreter mode
-	jsr	literal		; store literal (compiling)
+	;lda	STATE
+	;beq	@interpret1	; branch if in interpreter mode
+	;jsr	literal		; store literal (compiling)
 	jmp	@interpret1
 @interpret2:
 	lda	IMM
@@ -3811,9 +3821,10 @@ cold:
 	sta	HEREPTR+1
 	lda	#10		; set base to decimal
 	sta	BASE
-	sty	BASE+1
+	lda	#0
+	sta	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.69 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.70 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 

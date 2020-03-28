@@ -515,10 +515,11 @@ NOT ( flag1 -- flag2 )
 Reverse the boolean value of flag1.  This is identical to 0=.
 
 NUMBER ( addr -- n/d )
-Convert a string at addr to integer (n) or double integer (d).
+If interpreting then convert a string at addr to integer (n) or double
+integer (d) else compile integer (n) or double integer (d).
 
 OPEN-FILE ( addr n id -- ior )
-Opens a file. File name is defined at addr, n is equal to file's length, id
+Open a file. File name is defined at addr, n is equal to file's length, id
 is file id. Returns I/O operation's result.
 
 OR ( n1 n2 -- n3 )
