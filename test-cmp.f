@@ -1,0 +1,107 @@
+CR .( LOADING TEST SUITE: CMP) CR
+
+HEX
+
+VARIABLE EXE
+VARIABLE OK
+VARIABLE FAIL
+VARIABLE STEP
+
+: ISUITE
+0 EXE ! 0 OK ! 0 FAIL ! ;
+: CHECK0
+  DEPTH 0= IF 1 STEP +! THEN ;
+: CHECK1
+  DEPTH 1 = IF 1 STEP +! THEN ;
+: CHECK2
+  DEPTH 2 = IF 1 STEP +! THEN ;
+: CHECK3
+  DEPTH 3 = IF 1 STEP +! THEN ;
+: CHECK4
+  DEPTH 4 = IF 1 STEP +! THEN ;
+: ASSERT
+  = IF 1 STEP +! THEN ;
+: PROK
+  ." ok" CR ;
+: PRNOK
+  ." fail" CR ;
+: RESULT
+  = IF 1 OK +! PROK ELSE 1 FAIL +! PRNOK THEN ;
+: ICASE
+  1 EXE +! 0 STEP ! ;
+: STAT
+  CR ." eXECUTED " OK @ . ." / " EXE @ .
+  ." CASES SUCCESSFULLY" CR ;
+
+: T=
+  ." TESTING = - "
+  ICASE
+  -32768 -32767 = 0 ASSERT
+  5000 5000 = 1 ASSERT
+  CHECK0
+  STEP @ 3 RESULT
+;
+
+: T<
+  ." TESTING < - "
+  ICASE
+  -32768 -32767 < 1 ASSERT
+  5000 5000 < 0 ASSERT
+  5001 5000 < 0 ASSERT
+  CHECK0
+  STEP @ 4 RESULT
+;
+
+: T>
+  ." TESTING > - "
+  ICASE
+  -1 32767 > 0 ASSERT
+  5000 5000 > 0 ASSERT
+  5001 5000 > 1 ASSERT
+  CHECK0
+  STEP @ 4 RESULT
+;
+
+: T0=
+  ." TESTING 0= - "
+  ICASE
+  -1 0= 0 ASSERT
+  1 0= 0 ASSERT
+  0 0= 1 ASSERT
+  CHECK0
+  STEP @ 4 RESULT
+;
+
+: T0<
+  ." TESTING 0< - "
+  ICASE
+  -1 0< 1 ASSERT
+  1 0< 0 ASSERT
+  0 0< 0 ASSERT
+  CHECK0
+  STEP @ 4 RESULT
+;
+
+: T0>
+  ." TESTING 0> - "
+  ICASE
+  -1 0> 0 ASSERT
+  1 0> 1 ASSERT
+  0 0> 0 ASSERT
+  CHECK0
+  STEP @ 4 RESULT
+;
+
+: CMP
+  CR ISUITE
+  T=
+  T<
+  T>
+  T0=
+  T0<
+  T0>
+  STAT
+;
+
+DECIMAL
+
