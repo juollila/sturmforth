@@ -3826,7 +3826,7 @@ cold:
 	lda	#0
 	sta	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.71 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.72 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
