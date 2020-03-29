@@ -1851,8 +1851,9 @@ mul:	jsr	check2
 	defcode "/mod", 0
 divmod:	jsr	check2
 	lda	DSTACK-3,x	; check sign of result
+	sta	SIGN		; sign of remainder
 	eor	DSTACK-1,x
-	php			; save sign
+	php			; save sign of quotient
 	; negate n1 if needed
 	lda	DSTACK-3,x
 	bpl	@diva
@@ -1887,8 +1888,9 @@ divmod:	jsr	check2
 	sta	DSTACK-2,x
 	lda	TMP2
 	sta	DSTACK-1,x
-	plp			; adjust sign if needed
-	php
+	; plp			; adjust sign if needed
+	; php
+	lda	SIGN
 	bpl	@div3
 	jsr	negate
 @div3:	jsr	swap
@@ -2330,9 +2332,10 @@ mdiv:
 	defcode "m/mod", 0
 mdivmod:
 	jsr	check3
-	lda	DSTACK-3,x	; determine sign of result
-	eor	DSTACK-1,x
+	lda	DSTACK-3,x	; determine sign of remainder
 	sta	SIGN
+	eor	DSTACK-1,x	; determine sign of quotient
+	php
 	lda	DSTACK-1,x	; negate n1 if its negative
 	bpl	@mdiv1
 	jsr	negate
@@ -2345,13 +2348,16 @@ mdivmod:
 	jsr	rot
 @mdiv2:
 	jsr	ummod		; remainder quotient
+	jsr	swap		; quotient remainder
 	lda	SIGN
 	bpl	@mdiv3
 	jsr	negate
-	jsr	swap
+@mdiv3:	jsr	swap		; remainder quotient
+	plp
+	bpl	@mdiv4
 	jsr	negate
-	jsr	swap
-@mdiv3:	NEXT
+@mdiv4:
+	NEXT
 
 
 ; */	( n1 n2 n3 --- n )
@@ -3826,7 +3832,7 @@ cold:
 	lda	#0
 	sta	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.72 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.73 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
