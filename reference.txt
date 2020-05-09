@@ -558,7 +558,8 @@ READ-LINE (addr n1 id -- n2 ior )
 Read a file until n1 bytes has been read or end of line is reached.
 Destination address is addr, n1 is a number of bytes to be read, id is file
 id, n2 is equal to a number of bytes successfully read and ior is equal to
-I/O operation's result.
+I/O operation's result. A line-terminating character is read into memory at
+the end of the line, but is not included in the count n2.
 
 REPEAT
 Used in a colon-definition in the form: BEGIN ... WHILE ... REPEAT

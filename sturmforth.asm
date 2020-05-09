@@ -1217,19 +1217,26 @@ readfile1:
 	beq	@eol1
 	cpy	#lfeed
 	bne	@eol2
+   ldy   #eol
 @eol1:
-	jsr	clrchn
-	lda	#0
-	beq	@read4
-@eol2:	tya			; save char
+   tya
+   ldy   #0
+   sta   (TMP1),y
+   jsr   readst
+   jmp   @eof
+@eol2:	
+   tya			; save char
 	ldy	#0
 	sta	(TMP1),y
 	inc	TMP1
 	bne	@read2
 	inc	TMP2
-@read2:	jsr	readst
-	cmp	#0
-	bne	@eof		; branch if eof or error
+@read2:
+   jsr	readst
+	cmp	#eof
+   beq   @eof1    ; branch if eof
+   cmp   #0
+   bne   @eof     ; branch if other error
 	inc	AUX		; bytes read = bytes read + 1
 	bne	@read3
 	inc	AUX+1
@@ -1254,16 +1261,16 @@ readfile1:
 	lda	AUX+1
 	sta	DSTACK-3,x
 	NEXT
+@eof1:
+   inc   AUX
+   bne   @eof2
+@eof2:
+   inc   AUX+1
 @eof:
 	pha
 	jsr	clrchn
 	pla
-	cmp	#eof
-	bne	@read4
-	inc	AUX
-	bne	@eof2
-	inc	AUX+1
-@eof2:	jmp	@read4
+   jmp   @read4
 	
 
 ; READ-LINE ( addr n1 id --- n2 ior )
@@ -3832,7 +3839,7 @@ cold:
 	lda	#0
 	sta	BASE+1
 	jsr	primm
-	.byte	eol,lowcase,"    **** SturmFORTH v0.73 ****",eol, eol
+	.byte	eol,lowcase,"    **** SturmFORTH v0.74 ****",eol, eol
 	.byte               "       Coded by Juha Ollila",eol,eol,0
 	jmp	abort
 
