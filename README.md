@@ -12,6 +12,7 @@ recommended if a reader is not familiar with the FORTH programming language.
 Memory Map
 ==========
 
+```
 The following memory areas are used by SturmFORTH:
 $0003-$0072 Data stack
 $008B-$008F Variables
@@ -27,10 +28,12 @@ Note 1: SturmFORTH code length is less than 8kB.
 Note 2: Free space for dictionary entries starts immediately after SturmFORTH
 thus the actual starting address is below $2800. The actual starting address
 can be checked before any new word has been defined: HEX HERE @ .
+```
 
 Reference
 =========
 
+```
 addr = 16 bit address
 byte = 8 bit byte
 c    = 8 bit character
@@ -666,6 +669,7 @@ Leave the address of X register variable. Used with SYS word.
 
 YR ( -- addr )
 Leave the address of Y register variable. Used with SYS word.
+```
 
 Further Reading
 ===============
